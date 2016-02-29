@@ -1,42 +1,28 @@
-package pt.ubi.andremonteiro.crypt;
+package layout;
 
-import android.app.Dialog;
-import android.app.FragmentManager;
 import android.content.Context;
-import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
-import android.widget.Button;
-import android.widget.ListView;
-import android.widget.TextView;
-import android.widget.Toast;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-
+import pt.ubi.andremonteiro.crypt.R;
 
 /**
  * A simple {@link Fragment} subclass.
  * Activities that contain this fragment must implement the
- * {@link OfflineFragment.OnFragmentInteractionListener} interface
+ * {@link MainFragment.OnFragmentInteractionListener} interface
  * to handle interaction events.
- * Use the {@link OfflineFragment#newInstance} factory method to
+ * Use the {@link MainFragment#newInstance} factory method to
  * create an instance of this fragment.
  */
-public class OfflineFragment extends android.app.Fragment {
+public class MainFragment extends android.app.Fragment {
     // TODO: Rename parameter arguments, choose names that match
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
     private static final String ARG_PARAM1 = "param1";
     private static final String ARG_PARAM2 = "param2";
-
-    View v=null;
 
     // TODO: Rename and change types of parameters
     private String mParam1;
@@ -44,7 +30,7 @@ public class OfflineFragment extends android.app.Fragment {
 
     private OnFragmentInteractionListener mListener;
 
-    public OfflineFragment() {
+    public MainFragment() {
         // Required empty public constructor
     }
 
@@ -54,18 +40,18 @@ public class OfflineFragment extends android.app.Fragment {
      *
      * @param param1 Parameter 1.
      * @param param2 Parameter 2.
-     * @return A new instance of fragment OfflineFragment.
+     * @return A new instance of fragment MainFragment.
      */
     // TODO: Rename and change types and number of parameters
-    public static OfflineFragment newInstance(String param1, String param2) {
-        OfflineFragment fragment = new OfflineFragment();
+    public static MainFragment newInstance(String param1, String param2) {
+        MainFragment fragment = new MainFragment();
         Bundle args = new Bundle();
         args.putString(ARG_PARAM1, param1);
         args.putString(ARG_PARAM2, param2);
         fragment.setArguments(args);
         return fragment;
     }
-    Button buttonEncrypt, buttonDecrypt;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -79,25 +65,7 @@ public class OfflineFragment extends android.app.Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
-        v=inflater.inflate(R.layout.fragment_offline, container, false);
-        buttonEncrypt = (Button)v.findViewById(R.id.offlineEncryptButton);
-        final int PICKFILE_RESULT_CODE = 2;
-        buttonEncrypt.setOnClickListener(new Button.OnClickListener() {
-
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-                intent.setType("file/*");
-                startActivityForResult(intent, PICKFILE_RESULT_CODE);
-
-            }
-        });
-        return v;
-    }
-
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        // TODO Auto-generated method stub
+        return inflater.inflate(R.layout.fragment_main, container, false);
     }
 
     // TODO: Rename method, update argument and hook method into UI event
@@ -109,7 +77,8 @@ public class OfflineFragment extends android.app.Fragment {
 
     @Override
     public void onAttach(Context context) {
-            super.onAttach(context);
+        super.onAttach(context);
+
     }
 
     @Override
@@ -123,7 +92,7 @@ public class OfflineFragment extends android.app.Fragment {
      * fragment to allow an interaction in this fragment to be communicated
      * to the activity and potentially other fragments contained in that
      * activity.
-     * <p>
+     * <p/>
      * See the Android Training lesson <a href=
      * "http://developer.android.com/training/basics/fragments/communicating.html"
      * >Communicating with Other Fragments</a> for more information.
@@ -132,5 +101,4 @@ public class OfflineFragment extends android.app.Fragment {
         // TODO: Update argument type and name
         void onFragmentInteraction(Uri uri);
     }
-
 }
