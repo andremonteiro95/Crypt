@@ -17,7 +17,10 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -75,20 +78,21 @@ public class OfflineFragment extends android.app.Fragment {
         }
     }
 
+    StringBuilder text;
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
         v=inflater.inflate(R.layout.fragment_offline, container, false);
         buttonEncrypt = (Button)v.findViewById(R.id.offlineEncryptButton);
-        final int PICKFILE_RESULT_CODE = 2;
+
         buttonEncrypt.setOnClickListener(new Button.OnClickListener() {
 
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-                intent.setType("file/*");
-                startActivityForResult(intent, PICKFILE_RESULT_CODE);
+                intent.setType("*/*");
+                startActivityForResult(intent, 1);
 
             }
         });
@@ -98,8 +102,27 @@ public class OfflineFragment extends android.app.Fragment {
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         // TODO Auto-generated method stub
-    }
+        if(data != null){
+            String filepath = data.getData().getPath();
+            String[] tokens = filepath.split(":");
+            File file = new File(Environment.getExternalStorageDirectory(), tokens[1]);
+            text = new StringBuilder();
+            try {
+                BufferedReader br = new BufferedReader(new FileReader(file));
+                String line;
 
+                while ((line = br.readLine()) != null) {
+                    text.append(line);
+                    text.append('\n');
+                }
+                br.close();
+            }
+            catch (IOException e) {
+                System.out.println("IO Exception thrown.");
+            }
+        }
+
+    }
     // TODO: Rename method, update argument and hook method into UI event
     public void onButtonPressed(Uri uri) {
         if (mListener != null) {
