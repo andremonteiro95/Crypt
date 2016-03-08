@@ -1,8 +1,11 @@
 package pt.ubi.andremonteiro.crypt;
 
+import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.FragmentManager;
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -13,6 +16,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -90,12 +94,48 @@ public class OfflineFragment extends android.app.Fragment {
 
             @Override
             public void onClick(View v) {
-                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-                intent.setType("*/*");
-                startActivityForResult(intent, 1);
+                //Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                //intent.setType("*/*");
+                //startActivityForResult(intent, 1);
+                //Intent intent = new Intent("com.yubichallenge.NFCActivity.CHALLENGE");
+                //intent.putExtra("challenge",1234);
+                //startActivityForResult(intent, 1);
 
             }
         });
+
+        Button showDialog = (Button) v.findViewById(R.id.offlineDecryptButton);
+        final String userinputtext=null;
+        showDialog.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+                View view = LayoutInflater.from(getActivity()).inflate(R.layout.password_dialog, null);
+
+                AlertDialog.Builder alertBuilder = new AlertDialog.Builder(getActivity());
+                alertBuilder.setView(view);
+                final EditText userInput = (EditText) view.findViewById(R.id.userinput);
+
+                alertBuilder.setCancelable(true)
+                        .setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                System.out.println(userinputtext);
+
+                            }
+                        });
+                Dialog dialog = alertBuilder.create();
+                dialog.show();
+            }
+        });
+
+
+
+
+
+
+
         return v;
     }
 
@@ -104,6 +144,7 @@ public class OfflineFragment extends android.app.Fragment {
         // TODO Auto-generated method stub
         if(data != null){
             String filepath = data.getData().getPath();
+            System.out.println(data.getStringExtra("response"));
             String[] tokens = filepath.split(":");
             File file = new File(Environment.getExternalStorageDirectory(), tokens[1]);
             text = new StringBuilder();
@@ -120,6 +161,7 @@ public class OfflineFragment extends android.app.Fragment {
             catch (IOException e) {
                 System.out.println("IO Exception thrown.");
             }
+            System.out.println(text);
         }
 
     }
