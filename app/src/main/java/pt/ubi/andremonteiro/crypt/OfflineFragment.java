@@ -2,8 +2,6 @@ package pt.ubi.andremonteiro.crypt;
 
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.app.FragmentManager;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -14,19 +12,13 @@ import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ListView;
-import android.widget.TextView;
-import android.widget.Toast;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 
 /**
@@ -90,6 +82,7 @@ public class OfflineFragment extends android.app.Fragment {
         v=inflater.inflate(R.layout.fragment_offline, container, false);
         buttonEncrypt = (Button)v.findViewById(R.id.offlineEncryptButton);
 
+
         buttonEncrypt.setOnClickListener(new Button.OnClickListener() {
 
             @Override
@@ -97,10 +90,17 @@ public class OfflineFragment extends android.app.Fragment {
                 //Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
                 //intent.setType("*/*");
                 //startActivityForResult(intent, 1);
-                //Intent intent = new Intent("com.yubichallenge.NFCActivity.CHALLENGE");
-                //intent.putExtra("challenge",1234);
-                //startActivityForResult(intent, 1);
-
+                String x = "1234567812345678123456781234567812345678123456781234567812345678";
+                byte[] xb = new byte[64];
+                xb = x.getBytes();
+                Intent intent = new Intent(getActivity(),Challenge.class);
+                intent.putExtra("challenge", xb);
+                startActivityForResult(intent, 1);
+                /*byte[] example = new byte[64];
+                String string = "1234";
+                example = string.getBytes();
+                ChallengeResponse cr = new ChallengeResponse(getActivity(),example);
+                cr.challengeYubiKey();*/
             }
         });
 
