@@ -78,9 +78,6 @@ public class Challenge extends Activity {
 
         Intent intent = getIntent();
         challenge = intent.getByteArrayExtra("challenge");
-        int nbytes = intent.getIntExtra("nbytes", 64);
-        CHAL_BYTES = Byte.parseByte(Integer.toHexString(nbytes));
-        chalCommand[4] = CHAL_BYTES;
         slot = Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(this).getString("pref_Slot","2"));
         if (challenge == null) {
             return;
@@ -101,22 +98,20 @@ public class Challenge extends Activity {
                 if (resp[length - 2] == (byte) 0x90 && resp[length - 1] == 0x00)
                     doChallengeYubiKey(isoTag, slot, challenge);
                 else {
-                    Toast.makeText(this, "tag error", Toast.LENGTH_LONG)
+                    Toast.makeText(this, "Tag error.", Toast.LENGTH_LONG)
                             .show();
-                    System.out.println("Tag error.");
                     setResult(RESULT_CANCELED,intent);
                 }
 
                 isoTag.close();
             } catch (TagLostException e) {
-                Toast.makeText(this, "lost tag", Toast.LENGTH_LONG)
+                Toast.makeText(this, "Error: Tag lost.", Toast.LENGTH_LONG)
                         .show();
                 System.out.println("Lost Tag.");
                 setResult(RESULT_CANCELED,intent);
             } catch (IOException e) {
-                Toast.makeText(this, "tag error: " + e.getMessage(),
+                Toast.makeText(this, "Tag Error: " + e.getMessage(),
                         Toast.LENGTH_LONG).show();
-                System.out.println("Tag error.");
                 setResult(RESULT_CANCELED,intent);
             }
         }
@@ -154,10 +149,11 @@ public class Challenge extends Activity {
         enableDispatch();
     }
 
+    private static final int RESULT_CHALLENGE_OK = 64;
+
     private void doChallengeYubiKey(IsoDep isoTag, int slot, byte[] challenge) throws IOException {
         if (challenge == null || challenge.length != CHAL_BYTES)
             return;
-        System.out.println("Challenging");
         byte[] apdu = new byte[chalCommand.length + CHAL_BYTES];
         System.arraycopy(chalCommand, 0, apdu, 0, chalCommand.length);
         if (slot == 1)
@@ -172,11 +168,10 @@ public class Challenge extends Activity {
             System.arraycopy(respApdu, 0, resp, 0, RESP_BYTES);
             Intent data = getIntent();
             data.putExtra("response", resp);
-            setResult(RESULT_OK,data); // This is where the result gets sent back
+            setResult(RESULT_CHALLENGE_OK,data); // This is where the result gets sent back
         } else {
-            Toast.makeText(this, "challenge failed", Toast.LENGTH_LONG)
+            Toast.makeText(this, "Error: challenge failed.", Toast.LENGTH_LONG)
                     .show();
-            System.out.println("Challenge failed.");
             setResult(RESULT_CANCELED,getIntent());
         }
     }

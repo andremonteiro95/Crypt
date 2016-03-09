@@ -20,6 +20,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Random;
 
 
 /**
@@ -97,8 +98,7 @@ public class OfflineFragment extends android.app.Fragment {
         return v;
     }
 
-    String passphrase;
-    byte[] keyHMAC;
+    byte[] password, saltHMAC, keyHMAC;
 
     private void encryptMethod(File file){
         View view = LayoutInflater.from(getActivity()).inflate(R.layout.password_dialog, null);
@@ -110,23 +110,25 @@ public class OfflineFragment extends android.app.Fragment {
 
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                passphrase=userInput.getText().toString();
-                challengeMethod(passphrase);
+                password=userInput.getText().toString().getBytes();
+                saltHMAC= genRandomBytes();
+                challengeMethod(saltHMAC);
             }
         });
         Dialog dialog = alertBuilder.create();
         dialog.show();
     }
 
-    private void challengeMethod(String passphrase){
-        int nbytes = passphrase.length();
-        System.out.println("Length: "+nbytes);
-        byte[] bPass;
-        bPass = passphrase.getBytes();
+    private void challengeMethod(byte[] saltHMAC){
         Intent intent = new Intent(getActivity(),Challenge.class);
-        intent.putExtra("challenge", bPass);
-        intent.putExtra("nbytes",nbytes);
+        intent.putExtra("challenge", saltHMAC);
         startActivityForResult(intent, 1);
+    }
+
+    private byte[] genRandomBytes(){
+        byte[] bytes = new byte[64];
+        new Random().nextBytes(bytes);
+        return bytes;
     }
 
     @Override
@@ -135,18 +137,18 @@ public class OfflineFragment extends android.app.Fragment {
         if(resultCode == Activity.RESULT_CANCELED){
             System.out.println("Encryption canceled.");
         }
-        else if (resultCode == Activity.RESULT_OK){ // Result from challenge
+        else if (resultCode == 64){ // Result from challenge
             byte[] result = data.getByteArrayExtra("response");
             StringBuilder sb = new StringBuilder();
             for (byte b : result) {
                 sb.append(String.format("%02X ", b));
             }
-            System.out.println(sb.toString());
+            System.out.println("Response Challenge: "+sb.toString());
             keyHMAC=result;
         }
         else if(data != null){
             String filepath = data.getData().getPath();
-            System.out.println(data.getStringExtra("response"));
+            System.out.println("Filepath: "+filepath);
             String[] tokens = filepath.split(":");
             File file = new File(Environment.getExternalStorageDirectory(), tokens[1]);
             /*text = new StringBuilder();
@@ -163,6 +165,7 @@ public class OfflineFragment extends android.app.Fragment {
             catch (IOException e) {
                 System.out.println("IO Exception thrown.");
             }*/
+
             encryptMethod(file);
         }
 
