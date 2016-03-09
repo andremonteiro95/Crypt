@@ -1,5 +1,6 @@
 package pt.ubi.andremonteiro.crypt;
 
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
@@ -75,6 +76,7 @@ public class OfflineFragment extends android.app.Fragment {
     }
 
     StringBuilder text;
+    private String userinputtext;
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
@@ -87,67 +89,67 @@ public class OfflineFragment extends android.app.Fragment {
 
             @Override
             public void onClick(View v) {
-                //Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-                //intent.setType("*/*");
-                //startActivityForResult(intent, 1);
-                String x = "1234567812345678123456781234567812345678123456781234567812345678";
-                byte[] xb = new byte[64];
-                xb = x.getBytes();
-                Intent intent = new Intent(getActivity(),Challenge.class);
-                intent.putExtra("challenge", xb);
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.setType("*/*");
                 startActivityForResult(intent, 1);
-                /*byte[] example = new byte[64];
-                String string = "1234";
-                example = string.getBytes();
-                ChallengeResponse cr = new ChallengeResponse(getActivity(),example);
-                cr.challengeYubiKey();*/
             }
         });
+        return v;
+    }
 
-        Button showDialog = (Button) v.findViewById(R.id.offlineDecryptButton);
-        final String userinputtext=null;
-        showDialog.setOnClickListener(new View.OnClickListener() {
+    String passphrase;
+    byte[] keyHMAC;
+
+    private void encryptMethod(File file){
+        View view = LayoutInflater.from(getActivity()).inflate(R.layout.password_dialog, null);
+
+        AlertDialog.Builder alertBuilder = new AlertDialog.Builder(getActivity());
+        alertBuilder.setView(view);
+        final EditText userInput = (EditText) view.findViewById(R.id.userinput);
+        alertBuilder.setCancelable(true).setPositiveButton("Ok", new DialogInterface.OnClickListener() {
 
             @Override
-            public void onClick(View v) {
-                View view = LayoutInflater.from(getActivity()).inflate(R.layout.password_dialog, null);
-
-                AlertDialog.Builder alertBuilder = new AlertDialog.Builder(getActivity());
-                alertBuilder.setView(view);
-                final EditText userInput = (EditText) view.findViewById(R.id.userinput);
-
-                alertBuilder.setCancelable(true)
-                        .setPositiveButton("Ok", new DialogInterface.OnClickListener() {
-
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                System.out.println(userinputtext);
-
-                            }
-                        });
-                Dialog dialog = alertBuilder.create();
-                dialog.show();
+            public void onClick(DialogInterface dialog, int which) {
+                passphrase=userInput.getText().toString();
+                challengeMethod(passphrase);
             }
         });
+        Dialog dialog = alertBuilder.create();
+        dialog.show();
+    }
 
-
-
-
-
-
-
-        return v;
+    private void challengeMethod(String passphrase){
+        int nbytes = passphrase.length();
+        System.out.println("Length: "+nbytes);
+        byte[] bPass;
+        bPass = passphrase.getBytes();
+        Intent intent = new Intent(getActivity(),Challenge.class);
+        intent.putExtra("challenge", bPass);
+        intent.putExtra("nbytes",nbytes);
+        startActivityForResult(intent, 1);
     }
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         // TODO Auto-generated method stub
-        if(data != null){
+        if(resultCode == Activity.RESULT_CANCELED){
+            System.out.println("Encryption canceled.");
+        }
+        else if (resultCode == Activity.RESULT_OK){ // Result from challenge
+            byte[] result = data.getByteArrayExtra("response");
+            StringBuilder sb = new StringBuilder();
+            for (byte b : result) {
+                sb.append(String.format("%02X ", b));
+            }
+            System.out.println(sb.toString());
+            keyHMAC=result;
+        }
+        else if(data != null){
             String filepath = data.getData().getPath();
             System.out.println(data.getStringExtra("response"));
             String[] tokens = filepath.split(":");
             File file = new File(Environment.getExternalStorageDirectory(), tokens[1]);
-            text = new StringBuilder();
+            /*text = new StringBuilder();
             try {
                 BufferedReader br = new BufferedReader(new FileReader(file));
                 String line;
@@ -160,8 +162,8 @@ public class OfflineFragment extends android.app.Fragment {
             }
             catch (IOException e) {
                 System.out.println("IO Exception thrown.");
-            }
-            System.out.println(text);
+            }*/
+            encryptMethod(file);
         }
 
     }

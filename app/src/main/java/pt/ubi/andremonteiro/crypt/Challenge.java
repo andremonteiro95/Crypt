@@ -26,6 +26,7 @@ package pt.ubi.andremonteiro.crypt;
 
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import android.app.Fragment;
 import android.app.FragmentManager;
@@ -51,43 +52,38 @@ public class Challenge extends Activity {
 
 
     private byte[] challenge;
-    private int slot=2;
+    private int slot=1;
 
     private static final byte SLOT_CHAL_HMAC1 = 0x30;
     private static final byte SLOT_CHAL_HMAC2 = 0x38;
-    private static final byte CHAL_BYTES = 0x40; // 64
+    private static byte CHAL_BYTES = 0x40; // 64
     private static final byte RESP_BYTES = 20;
 
     private static final byte[] selectCommand = { 0x00, (byte) 0xA4, 0x04,
             0x00, 0x07, (byte) 0xA0, 0x00, 0x00, 0x05, 0x27, 0x20, 0x01, 0x00 };
-    private static final byte[] chalCommand = { 0x00, 0x01, SLOT_CHAL_HMAC2,
+    private static byte[] chalCommand = { 0x00, 0x01, SLOT_CHAL_HMAC2,
             0x00, CHAL_BYTES };
 
     private AlertDialog swipeDialog;
-
 
     public Challenge()
     {
 
     }
 
-
     @Override
     protected void onResume()
     {
         super.onResume();
 
-        /*Intent closeIntent = new Intent("close main activity");
-        sendBroadcast(closeIntent);	//Having the main activity running can cause problems using the back button*/
-
         Intent intent = getIntent();
         challenge = intent.getByteArrayExtra("challenge");
+        int nbytes = intent.getIntExtra("nbytes", 64);
+        CHAL_BYTES = Byte.parseByte(Integer.toHexString(nbytes));
+        chalCommand[4] = CHAL_BYTES;
         slot = Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(this).getString("pref_Slot","2"));
         if (challenge == null) {
-            System.out.println("NULL CHALLENGE"); return;
-        }
-        else if (challenge.length != CHAL_BYTES) {
-            System.out.println("length inc"); return;
+            return;
         }
         else  challengeYubiKey();
     }
@@ -107,6 +103,7 @@ public class Challenge extends Activity {
                 else {
                     Toast.makeText(this, "tag error", Toast.LENGTH_LONG)
                             .show();
+                    System.out.println("Tag error.");
                     setResult(RESULT_CANCELED,intent);
                 }
 
@@ -114,10 +111,12 @@ public class Challenge extends Activity {
             } catch (TagLostException e) {
                 Toast.makeText(this, "lost tag", Toast.LENGTH_LONG)
                         .show();
+                System.out.println("Lost Tag.");
                 setResult(RESULT_CANCELED,intent);
             } catch (IOException e) {
                 Toast.makeText(this, "tag error: " + e.getMessage(),
                         Toast.LENGTH_LONG).show();
+                System.out.println("Tag error.");
                 setResult(RESULT_CANCELED,intent);
             }
         }
@@ -149,8 +148,8 @@ public class Challenge extends Activity {
 
     private void challengeYubiKey() {
         AlertDialog.Builder challengeDialog = new AlertDialog.Builder(this);
-        challengeDialog.setTitle("challenging...");
-        challengeDialog.setMessage("swipe!");
+        challengeDialog.setTitle("Challenging...");
+        challengeDialog.setMessage("Please, swipe your Yubikey.");
         swipeDialog = challengeDialog.show();
         enableDispatch();
     }
@@ -173,11 +172,11 @@ public class Challenge extends Activity {
             System.arraycopy(respApdu, 0, resp, 0, RESP_BYTES);
             Intent data = getIntent();
             data.putExtra("response", resp);
-            System.out.println(new String(resp));
             setResult(RESULT_OK,data); // This is where the result gets sent back
         } else {
             Toast.makeText(this, "challenge failed", Toast.LENGTH_LONG)
                     .show();
+            System.out.println("Challenge failed.");
             setResult(RESULT_CANCELED,getIntent());
         }
     }
