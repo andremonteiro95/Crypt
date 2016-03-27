@@ -3,6 +3,7 @@ package pt.ubi.andremonteiro.crypt;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -18,9 +19,22 @@ import android.widget.EditText;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
 import java.util.Random;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 
 
 /**
@@ -84,7 +98,7 @@ public class OfflineFragment extends android.app.Fragment {
         // Inflate the layout for this fragment
         v=inflater.inflate(R.layout.fragment_offline, container, false);
         buttonEncrypt = (Button)v.findViewById(R.id.offlineEncryptButton);
-
+        buttonDecrypt = (Button)v.findViewById(R.id.offlineDecryptButton);
 
         buttonEncrypt.setOnClickListener(new Button.OnClickListener() {
 
@@ -92,15 +106,28 @@ public class OfflineFragment extends android.app.Fragment {
             public void onClick(View v) {
                 Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
                 intent.setType("*/*");
-                startActivityForResult(intent, 1);
+                startActivityForResult(intent, CALL_ENCRYPTION);
+            }
+        });
+
+        buttonDecrypt.setOnClickListener(new Button.OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.setType("*/*");
+                startActivityForResult(intent, CALL_DECRYPTION);
             }
         });
         return v;
     }
 
-    byte[] password, saltHMAC, keyHMAC;
+    byte[] password, saltHMAC, keyHMAC, encrypted, decrypted, tokenSerial;
+    InputStream inputStream;
+    String filename;
+    int RESULT_CHALLENGE = 64, RESULT_SAVE_ENCRYPTED = 65, CALL_ENCRYPTION = 62, CALL_DECRYPTION = 63, CHALLENGE_ENC = 66, CHALLENGE_DEC = 67;
 
-    private void encryptMethod(File file){
+    private void encryptMethod(){
         View view = LayoutInflater.from(getActivity()).inflate(R.layout.password_dialog, null);
 
         AlertDialog.Builder alertBuilder = new AlertDialog.Builder(getActivity());
@@ -110,23 +137,46 @@ public class OfflineFragment extends android.app.Fragment {
 
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                password=userInput.getText().toString().getBytes();
-                saltHMAC= genRandomBytes();
-                challengeMethod(saltHMAC);
+                password = userInput.getText().toString().getBytes();
+                saltHMAC = genRandomBytes();
+                challengeMethod(saltHMAC, CHALLENGE_ENC);
+            }
+        });
+        Dialog dialog = alertBuilder.create();
+        dialog.show();
+    }
+    private void decryptMethod(){
+        View view = LayoutInflater.from(getActivity()).inflate(R.layout.password_dialog, null);
+
+        AlertDialog.Builder alertBuilder = new AlertDialog.Builder(getActivity());
+        alertBuilder.setView(view);
+        final EditText userInput = (EditText) view.findViewById(R.id.userinput);
+        alertBuilder.setCancelable(true).setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                password = userInput.getText().toString().getBytes();
+                byte[] salt = new byte[32];
+                try {
+                    salt = CryptSuite.getSaltFromFile(inputStream);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                challengeMethod(salt, CHALLENGE_DEC);
             }
         });
         Dialog dialog = alertBuilder.create();
         dialog.show();
     }
 
-    private void challengeMethod(byte[] saltHMAC){
+    private void challengeMethod(byte[] saltHMAC, int challenge_mode){
         Intent intent = new Intent(getActivity(),Challenge.class);
         intent.putExtra("challenge", saltHMAC);
-        startActivityForResult(intent, 1);
+        startActivityForResult(intent, challenge_mode);
     }
 
     private byte[] genRandomBytes(){
-        byte[] bytes = new byte[64];
+        byte[] bytes = new byte[32];
         new Random().nextBytes(bytes);
         return bytes;
     }
@@ -135,41 +185,65 @@ public class OfflineFragment extends android.app.Fragment {
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         // TODO Auto-generated method stub
         if(resultCode == Activity.RESULT_CANCELED){
-            System.out.println("Encryption canceled.");
+            System.out.println("Encryption canceled. Req code: "+requestCode);
         }
-        else if (resultCode == 64){ // Result from challenge
-            byte[] result = data.getByteArrayExtra("response");
-            StringBuilder sb = new StringBuilder();
-            for (byte b : result) {
-                sb.append(String.format("%02X ", b));
+        else if (resultCode == RESULT_CHALLENGE){ // Result from challenge: 64
+            keyHMAC = data.getByteArrayExtra("response");
+            tokenSerial = data.getByteArrayExtra("serial");
+            //System.out.println("Token Serial: "+Util.byteArrayToString(tokenSerial));
+            //System.out.println("Response Challenge: " + Util.byteArrayToString(result));;
+            try {
+                if (requestCode == CHALLENGE_ENC) {
+                    encrypted = CryptSuite.encryptFile(inputStream, password, saltHMAC, keyHMAC, tokenSerial);
+                    saveFile(null);
+                }
+                else{
+                    String s= Util.getStringFromInputStream(inputStream);
+                    System.out.println("DEC: "+ Util.byteArrayToString(s.getBytes()));
+                    decrypted = CryptSuite.decryptFile(inputStream, password, keyHMAC, tokenSerial);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-            System.out.println("Response Challenge: "+sb.toString());
-            keyHMAC=result;
+        }
+        else if(requestCode == RESULT_SAVE_ENCRYPTED){
+            try {
+                saveFile(data.getData());
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
         else if(data != null){
-            String filepath = data.getData().getPath();
-            System.out.println("Filepath: "+filepath);
-            String[] tokens = filepath.split(":");
-            File file = new File(Environment.getExternalStorageDirectory(), tokens[1]);
-            /*text = new StringBuilder();
+            ContentResolver cr = getActivity().getContentResolver();
             try {
-                BufferedReader br = new BufferedReader(new FileReader(file));
-                String line;
-
-                while ((line = br.readLine()) != null) {
-                    text.append(line);
-                    text.append('\n');
-                }
-                br.close();
+                inputStream = cr.openInputStream(data.getData());
+                System.out.println(data.getData().getPath());
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
             }
-            catch (IOException e) {
-                System.out.println("IO Exception thrown.");
-            }*/
-
-            encryptMethod(file);
+            if (requestCode == CALL_ENCRYPTION) encryptMethod();
+            else if (requestCode == CALL_DECRYPTION) decryptMethod();
         }
 
     }
+
+    public void saveFile(Uri uri) throws IOException {
+        if (uri==null){
+            Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("*/*");
+            intent.putExtra(Intent.EXTRA_TITLE, filename+".ybc");
+            startActivityForResult(intent, RESULT_SAVE_ENCRYPTED);
+            return;
+        }
+        ContentResolver cr = getActivity().getContentResolver();
+        OutputStream outputStream = cr.openOutputStream(uri,"w");
+        outputStream.write(encrypted);
+        outputStream.close();
+    }
+
     // TODO: Rename method, update argument and hook method into UI event
     public void onButtonPressed(Uri uri) {
         if (mListener != null) {

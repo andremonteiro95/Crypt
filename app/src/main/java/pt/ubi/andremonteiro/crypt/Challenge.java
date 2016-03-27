@@ -27,6 +27,7 @@ package pt.ubi.andremonteiro.crypt;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 
 import android.app.Fragment;
 import android.app.FragmentManager;
@@ -56,7 +57,7 @@ public class Challenge extends Activity {
 
     private static final byte SLOT_CHAL_HMAC1 = 0x30;
     private static final byte SLOT_CHAL_HMAC2 = 0x38;
-    private static byte CHAL_BYTES = 0x40; // 64
+    private static byte CHAL_BYTES = 0x20; // 32
     private static final byte RESP_BYTES = 20;
 
     private static final byte[] selectCommand = { 0x00, (byte) 0xA4, 0x04,
@@ -89,6 +90,7 @@ public class Challenge extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         Tag tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
+
         if (tag != null) {
             IsoDep isoTag = IsoDep.get(tag);
             try {
@@ -100,6 +102,7 @@ public class Challenge extends Activity {
                 else {
                     Toast.makeText(this, "Tag error.", Toast.LENGTH_LONG)
                             .show();
+                    System.out.println("tag error");
                     setResult(RESULT_CANCELED,intent);
                 }
 
@@ -107,15 +110,18 @@ public class Challenge extends Activity {
             } catch (TagLostException e) {
                 Toast.makeText(this, "Error: Tag lost.", Toast.LENGTH_LONG)
                         .show();
-                System.out.println("Lost Tag.");
+                System.out.println("tag lost");
                 setResult(RESULT_CANCELED,intent);
             } catch (IOException e) {
                 Toast.makeText(this, "Tag Error: " + e.getMessage(),
                         Toast.LENGTH_LONG).show();
+                System.out.println("tag error");
                 setResult(RESULT_CANCELED,intent);
             }
         }
-        else setResult(RESULT_CANCELED,intent);
+        else{
+            setResult(RESULT_CANCELED,intent);
+        }
         finish();
     }
 
@@ -168,10 +174,13 @@ public class Challenge extends Activity {
             System.arraycopy(respApdu, 0, resp, 0, RESP_BYTES);
             Intent data = getIntent();
             data.putExtra("response", resp);
-            setResult(RESULT_CHALLENGE_OK,data); // This is where the result gets sent back
+            data.putExtra("serial", isoTag.getTag().getId());
+
+            setResult(RESULT_CHALLENGE_OK, data); // This is where the result gets sent back
         } else {
             Toast.makeText(this, "Error: challenge failed.", Toast.LENGTH_LONG)
                     .show();
+            System.out.println("challenge failed");
             setResult(RESULT_CANCELED,getIntent());
         }
     }
