@@ -52,7 +52,8 @@ public class CryptSuite {
         //System.out.println("Salt: " + Util.byteArrayToString(salt));
         //System.out.println("Key:  " + Util.byteArrayToString(key));
         //System.out.println("IV:   " + Util.byteArrayToString(iv));
-
+        System.out.println("KEY ENC: "+ Util.byteArrayToString(key));
+        System.out.println("IV  ENC: "+ Util.byteArrayToString(iv));
         Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
         try {
             cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, 0, 32, "AES"), new IvParameterSpec(iv));
@@ -62,8 +63,7 @@ public class CryptSuite {
             e.printStackTrace();
         }
         //HEADER = Version 4 bytes, Cypher Suite 4 bytes, Salt 32 bytes, IV 16 bytes, Iteraçoes 4 bytes, validation 32 bytes
-        String s=Util.getStringFromInputStream(inputStream);
-        byte[] encrypted = cipher.doFinal(s.getBytes());
+        byte[] encrypted = cipher.doFinal(Util.getBytesFromInputStream(inputStream));
 
         ByteArrayOutputStream byteos = new ByteArrayOutputStream();
         //HEADER BEGIN
@@ -79,20 +79,62 @@ public class CryptSuite {
         byteos.write(getFileHMAC(byteos.toByteArray(), hmacKey, byteos.toByteArray().length));
 
         inputStream.close();
-        System.out.println("ENC: "+ Util.byteArrayToString(byteos.toByteArray()));
         return byteos.toByteArray();
     }
 
-    public static byte[] decryptFile(InputStream inputStream, byte[] password, byte[] hmacKey, byte[] tokenSerial) throws IOException {
-        byte[] analysis = new byte[4];
-        inputStream.read(analysis,0,4);
-        System.out.println("THIS SHIT: "+ Util.byteArrayToString(analysis));
-        if (analysis != YC_FILE_SPEC){
-            System.out.println("ERROR BITCH!");
+    public static byte[] decryptFile(byte[] file, byte[] password, byte[] hmacKey, byte[] tokenSerial) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, NoSuchPaddingException, InvalidAlgorithmParameterException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
+        if (!Arrays.equals(YC_FILE_SPEC,Arrays.copyOfRange(file,0,4))){
+            System.out.println("Wrong file specification.");
             return null;
         }
-        System.out.println("ALL K ");
-        return null;
+        if (!Arrays.equals(YC_FILE_CIPHER,Arrays.copyOfRange(file,4,8))){
+            System.out.println("Wrong cipher version.");
+            return null;
+        }
+        if (!validateKey(file, password, tokenSerial)){
+            System.out.println("Invalid credentials. Check if you are entering the correct password and using the correct Yubikey token.");
+            return null;
+        }
+        try {
+            if (!Arrays.equals( getFileHMAC(file,hmacKey,file.length-32) , Arrays.copyOfRange(file,file.length-32, file.length) )){
+                System.out.println("File corrupted. Invalid HMAC.");
+                return null;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        //if gets to this point -> ready to decrypt
+        byte[] iv = Arrays.copyOfRange(file, 40, 56);
+        byte[] iterations = Arrays.copyOfRange(file, 56, 60);
+
+        ByteBuffer byteBuffer = ByteBuffer.wrap(iterations);
+        System.out.println("Hello "+byteBuffer.getInt());
+        SecretKeyFactory skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
+        PBEKeySpec pbekey = new PBEKeySpec("hello".toCharArray(),hmacKey,64000,keysize*8);
+        //System.out.println("PBE KEY DEC: "+pbekey.);
+
+        byte[] key = skf.generateSecret(pbekey).getEncoded();
+        System.out.println("KEY DEC: "+ Util.byteArrayToString(key));
+        System.out.println("IV  DEC: "+ Util.byteArrayToString(iv));
+
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, 0, 32, "AES"), new IvParameterSpec(iv));
+        //HEADER = Version 4 bytes, Cypher Suite 4 bytes, Salt 32 bytes, IV 16 bytes, Iteraçoes 4 bytes, validation 32 bytes
+        byte[] decrypted = cipher.doFinal(Arrays.copyOfRange(file,92,file.length-32));
+
+        return decrypted;
+    }
+
+    public static boolean validateKey(byte[] file, byte[] password, byte[] tokenSerial){
+        try {
+            if (Arrays.equals(Arrays.copyOfRange(file, 60, 92), getValidation(password, tokenSerial)))
+                return true;
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 
     public static byte[] getFileHMAC(byte[] array, byte[] hmacKey, int length) throws NoSuchAlgorithmException, InvalidKeyException {
@@ -113,15 +155,8 @@ public class CryptSuite {
         return md.digest();
     }
 
-    public static byte[] getSaltFromFile(InputStream inputStream) throws IOException { // salt begins at the 9th byte, length 32
-        byte[] salt = new byte[128];
-        //int x = inputStream.read(salt,8,32);
-        System.out.println(Util.getStringFromInputStream(inputStream));
-
-
-        //System.out.println("INTINT "+x);
-        //ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        //baos.
+    public static byte[] getSaltFromFile(byte[] file) throws IOException { // salt begins at the 9th byte, length 32
+        byte[] salt = Arrays.copyOfRange(file, 8, 40);
         System.out.println(Util.byteArrayToString(salt));
         return salt;
     }

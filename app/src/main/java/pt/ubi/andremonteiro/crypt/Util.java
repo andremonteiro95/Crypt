@@ -1,5 +1,7 @@
 package pt.ubi.andremonteiro.crypt;
 
+import org.apache.commons.io.IOUtils;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -45,5 +47,14 @@ public class Util {
 
         return sb.toString();
 
+    }
+
+    public static byte[] getBytesFromInputStream(InputStream is) throws IOException {
+        return IOUtils.toByteArray(is);
+    }
+
+    public static String getFileNameFromPath(String path){
+        String[] tokens = path.split("/");
+        return tokens[tokens.length-1];
     }
 }

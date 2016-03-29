@@ -90,8 +90,6 @@ public class OfflineFragment extends android.app.Fragment {
         }
     }
 
-    StringBuilder text;
-    private String userinputtext;
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
@@ -158,7 +156,8 @@ public class OfflineFragment extends android.app.Fragment {
                 password = userInput.getText().toString().getBytes();
                 byte[] salt = new byte[32];
                 try {
-                    salt = CryptSuite.getSaltFromFile(inputStream);
+                    encrypted = Util.getBytesFromInputStream(inputStream);
+                    salt = CryptSuite.getSaltFromFile(encrypted);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -198,9 +197,10 @@ public class OfflineFragment extends android.app.Fragment {
                     saveFile(null);
                 }
                 else{
-                    String s= Util.getStringFromInputStream(inputStream);
-                    System.out.println("DEC: "+ Util.byteArrayToString(s.getBytes()));
-                    decrypted = CryptSuite.decryptFile(inputStream, password, keyHMAC, tokenSerial);
+
+                    decrypted = CryptSuite.decryptFile(encrypted, password, keyHMAC, tokenSerial);
+                    if (decrypted == null)
+                            return;
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -209,9 +209,7 @@ public class OfflineFragment extends android.app.Fragment {
         else if(requestCode == RESULT_SAVE_ENCRYPTED){
             try {
                 saveFile(data.getData());
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
@@ -220,6 +218,7 @@ public class OfflineFragment extends android.app.Fragment {
             try {
                 inputStream = cr.openInputStream(data.getData());
                 System.out.println(data.getData().getPath());
+                filename=Util.getFileNameFromPath(data.getData().getPath());
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
             }
@@ -242,6 +241,7 @@ public class OfflineFragment extends android.app.Fragment {
         OutputStream outputStream = cr.openOutputStream(uri,"w");
         outputStream.write(encrypted);
         outputStream.close();
+        encrypted = null;
     }
 
     // TODO: Rename method, update argument and hook method into UI event
