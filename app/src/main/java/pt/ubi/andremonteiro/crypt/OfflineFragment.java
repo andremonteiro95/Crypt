@@ -120,10 +120,10 @@ public class OfflineFragment extends android.app.Fragment {
         return v;
     }
 
-    byte[] password, saltHMAC, keyHMAC, encrypted, decrypted, tokenSerial;
+    byte[] saltHMAC, keyHMAC, encrypted, decrypted, tokenSerial;
     InputStream inputStream;
-    String filename;
-    int RESULT_CHALLENGE = 64, RESULT_SAVE_ENCRYPTED = 65, CALL_ENCRYPTION = 62, CALL_DECRYPTION = 63, CHALLENGE_ENC = 66, CHALLENGE_DEC = 67;
+    String password, filename;
+    int RESULT_CHALLENGE = 64, RESULT_SAVE_ENCRYPTED = 75, RESULT_SAVE_DECRYPTED = 76, CALL_ENCRYPTION = 62, CALL_DECRYPTION = 63, CHALLENGE_ENC = 66, CHALLENGE_DEC = 67;
 
     private void encryptMethod(){
         View view = LayoutInflater.from(getActivity()).inflate(R.layout.password_dialog, null);
@@ -135,7 +135,7 @@ public class OfflineFragment extends android.app.Fragment {
 
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                password = userInput.getText().toString().getBytes();
+                password = userInput.getText().toString();
                 saltHMAC = genRandomBytes();
                 challengeMethod(saltHMAC, CHALLENGE_ENC);
             }
@@ -153,7 +153,7 @@ public class OfflineFragment extends android.app.Fragment {
 
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                password = userInput.getText().toString().getBytes();
+                password = userInput.getText().toString();
                 byte[] salt = new byte[32];
                 try {
                     encrypted = Util.getBytesFromInputStream(inputStream);
@@ -194,13 +194,14 @@ public class OfflineFragment extends android.app.Fragment {
             try {
                 if (requestCode == CHALLENGE_ENC) {
                     encrypted = CryptSuite.encryptFile(inputStream, password, saltHMAC, keyHMAC, tokenSerial);
-                    saveFile(null);
+                    saveFile(null,CALL_ENCRYPTION);
                 }
                 else{
 
                     decrypted = CryptSuite.decryptFile(encrypted, password, keyHMAC, tokenSerial);
                     if (decrypted == null)
                             return;
+                    saveFile(null,CALL_DECRYPTION);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -208,7 +209,14 @@ public class OfflineFragment extends android.app.Fragment {
         }
         else if(requestCode == RESULT_SAVE_ENCRYPTED){
             try {
-                saveFile(data.getData());
+                saveFile(data.getData(),CALL_ENCRYPTION);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        else if(requestCode == RESULT_SAVE_DECRYPTED){
+            try {
+                saveFile(data.getData(),CALL_DECRYPTION);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -217,31 +225,40 @@ public class OfflineFragment extends android.app.Fragment {
             ContentResolver cr = getActivity().getContentResolver();
             try {
                 inputStream = cr.openInputStream(data.getData());
-                System.out.println(data.getData().getPath());
-                filename=Util.getFileNameFromPath(data.getData().getPath());
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
             }
-            if (requestCode == CALL_ENCRYPTION) encryptMethod();
-            else if (requestCode == CALL_DECRYPTION) decryptMethod();
+            if (requestCode == CALL_ENCRYPTION){
+                filename=Util.getFileNameFromPath(data.getData().getPath());
+                encryptMethod();
+            }
+            else if (requestCode == CALL_DECRYPTION){
+                filename=Util.getFileNameFromPathDec(data.getData().getPath());
+                decryptMethod();
+            }
         }
 
     }
 
-    public void saveFile(Uri uri) throws IOException {
+    public void saveFile(Uri uri, int mode) throws IOException {
         if (uri==null){
             Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
             intent.addCategory(Intent.CATEGORY_OPENABLE);
             intent.setType("*/*");
-            intent.putExtra(Intent.EXTRA_TITLE, filename+".ybc");
-            startActivityForResult(intent, RESULT_SAVE_ENCRYPTED);
+            intent.putExtra(Intent.EXTRA_TITLE, filename + ".ybc");
+            if (mode == CALL_ENCRYPTION)
+                startActivityForResult(intent, RESULT_SAVE_ENCRYPTED);
+            else if (mode == CALL_DECRYPTION)
+                startActivityForResult(intent, RESULT_SAVE_DECRYPTED);
             return;
         }
         ContentResolver cr = getActivity().getContentResolver();
         OutputStream outputStream = cr.openOutputStream(uri,"w");
-        outputStream.write(encrypted);
+        if (mode == CALL_ENCRYPTION) outputStream.write(encrypted);
+        else outputStream.write(decrypted);
         outputStream.close();
         encrypted = null;
+        decrypted = null;
     }
 
     // TODO: Rename method, update argument and hook method into UI event

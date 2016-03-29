@@ -42,9 +42,9 @@ public class CryptSuite {
     private static byte[] YC_FILE_SPEC = { 0x59, 0x43, 0x46, 0x01 };
     private static byte[] YC_FILE_CIPHER = { 0x01, 0x01, 0x01, 0x01 };
 
-    public static byte[] encryptFile(InputStream inputStream, byte[] password, byte[] salt, byte[] hmacKey, byte[] tokenSerial) throws NoSuchAlgorithmException, InvalidKeySpecException, NoSuchPaddingException, InvalidAlgorithmParameterException, InvalidKeyException, IOException, BadPaddingException, IllegalBlockSizeException {
+    public static byte[] encryptFile(InputStream inputStream, String password, byte[] salt, byte[] hmacKey, byte[] tokenSerial) throws NoSuchAlgorithmException, InvalidKeySpecException, NoSuchPaddingException, InvalidAlgorithmParameterException, InvalidKeyException, IOException, BadPaddingException, IllegalBlockSizeException {
         SecretKeyFactory skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
-        PBEKeySpec pbekey = new PBEKeySpec(password.toString().toCharArray(),hmacKey,iterations,keysize*8);
+        PBEKeySpec pbekey = new PBEKeySpec(password.toCharArray(),hmacKey,iterations,keysize*8);
 
         byte[] key = skf.generateSecret(pbekey).getEncoded();
         byte[] iv = new byte[16];
@@ -72,7 +72,7 @@ public class CryptSuite {
         byteos.write(salt);
         byteos.write(iv);
         byteos.write(ByteBuffer.allocate(4).putInt(iterations).array());
-        byteos.write(getValidation(password, tokenSerial));
+        byteos.write(getValidation(password.getBytes(), tokenSerial));
         //FILE BEGIN
         byteos.write(encrypted);
         //HMAC BEGIN
@@ -82,7 +82,7 @@ public class CryptSuite {
         return byteos.toByteArray();
     }
 
-    public static byte[] decryptFile(byte[] file, byte[] password, byte[] hmacKey, byte[] tokenSerial) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, NoSuchPaddingException, InvalidAlgorithmParameterException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
+    public static byte[] decryptFile(byte[] file, String password, byte[] hmacKey, byte[] tokenSerial) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, NoSuchPaddingException, InvalidAlgorithmParameterException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
         if (!Arrays.equals(YC_FILE_SPEC,Arrays.copyOfRange(file,0,4))){
             System.out.println("Wrong file specification.");
             return null;
@@ -91,7 +91,7 @@ public class CryptSuite {
             System.out.println("Wrong cipher version.");
             return null;
         }
-        if (!validateKey(file, password, tokenSerial)){
+        if (!validateKey(file, password.getBytes(), tokenSerial)){
             System.out.println("Invalid credentials. Check if you are entering the correct password and using the correct Yubikey token.");
             return null;
         }
@@ -110,7 +110,7 @@ public class CryptSuite {
         ByteBuffer byteBuffer = ByteBuffer.wrap(iterations);
         System.out.println("Hello "+byteBuffer.getInt());
         SecretKeyFactory skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
-        PBEKeySpec pbekey = new PBEKeySpec("hello".toCharArray(),hmacKey,64000,keysize*8);
+        PBEKeySpec pbekey = new PBEKeySpec(password.toCharArray(),hmacKey,64000,keysize*8);
         //System.out.println("PBE KEY DEC: "+pbekey.);
 
         byte[] key = skf.generateSecret(pbekey).getEncoded();
@@ -121,7 +121,6 @@ public class CryptSuite {
         cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, 0, 32, "AES"), new IvParameterSpec(iv));
         //HEADER = Version 4 bytes, Cypher Suite 4 bytes, Salt 32 bytes, IV 16 bytes, Iteraçoes 4 bytes, validation 32 bytes
         byte[] decrypted = cipher.doFinal(Arrays.copyOfRange(file,92,file.length-32));
-
         return decrypted;
     }
 

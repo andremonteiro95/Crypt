@@ -57,4 +57,14 @@ public class Util {
         String[] tokens = path.split("/");
         return tokens[tokens.length-1];
     }
+
+    public static String getFileNameFromPathDec(String path){
+        String[] tokens = path.split("/");
+        String[] tokens2 = tokens[tokens.length-1].split(".");
+        StringBuilder builder = new StringBuilder();
+        for(int i =0; i< tokens2.length -2 ; i++) {
+            builder.append(tokens2[i]);
+        }
+        return builder.toString();
+    }
 }
