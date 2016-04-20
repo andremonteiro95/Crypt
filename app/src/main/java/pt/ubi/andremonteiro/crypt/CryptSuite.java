@@ -40,7 +40,7 @@ public class CryptSuite {
     private static final int iterations = 64000;
     private static final int keysize = 32;
     private static byte[] YC_FILE_SPEC = { 0x59, 0x43, 0x46, 0x01 };
-    private static byte[] YC_FILE_CIPHER = { 0x01, 0x01, 0x01, 0x01 };
+    private static byte[] YC_FILE_CIPHER = { 0x00, 0x00, 0x11, 0x00 };
 
     public static byte[] encryptFile(InputStream inputStream, String password, byte[] salt, byte[] hmacKey, byte[] tokenSerial) throws NoSuchAlgorithmException, InvalidKeySpecException, NoSuchPaddingException, InvalidAlgorithmParameterException, InvalidKeyException, IOException, BadPaddingException, IllegalBlockSizeException {
         SecretKeyFactory skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
@@ -149,6 +149,7 @@ public class CryptSuite {
         ByteArrayOutputStream byteos = new ByteArrayOutputStream();
         byteos.write(password);
         byteos.write(tokenSerial);
+        System.out.println("byteos "+Util.byteArrayToString(byteos.toByteArray()));
         MessageDigest md = MessageDigest.getInstance("SHA-256");
         md.update(byteos.toByteArray());
         return md.digest();

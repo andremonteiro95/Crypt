@@ -114,6 +114,15 @@ public class MainActivity extends AppCompatActivity
             setTitle("Offline Mode");
         }
 
+        if (id == R.id.nav_online) {
+            Fragment fragment = new OfflineFragment();
+            FragmentManager fragmentManager = getFragmentManager();
+            fragmentManager.beginTransaction()
+                    .replace(R.id.mainRelLayout, fragment)
+                    .commit();
+            setTitle("Offline Mode");
+        }
+
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         drawer.closeDrawer(GravityCompat.START);
         return true;
