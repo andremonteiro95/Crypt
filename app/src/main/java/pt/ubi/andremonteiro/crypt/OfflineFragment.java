@@ -1,13 +1,16 @@
 package pt.ubi.andremonteiro.crypt;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.app.ProgressDialog;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.v4.app.Fragment;
@@ -16,6 +19,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Toast;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -124,11 +128,12 @@ public class OfflineFragment extends android.app.Fragment {
     InputStream inputStream;
     String password, filename;
     int RESULT_CHALLENGE = 64, RESULT_SAVE_ENCRYPTED = 75, RESULT_SAVE_DECRYPTED = 76, CALL_ENCRYPTION = 62, CALL_DECRYPTION = 63, CHALLENGE_ENC = 66, CHALLENGE_DEC = 67;
+    Context ctx;
 
     private void encryptMethod(){
         View view = LayoutInflater.from(getActivity()).inflate(R.layout.password_dialog, null);
-
-        AlertDialog.Builder alertBuilder = new AlertDialog.Builder(getActivity());
+        ctx = getActivity();
+        AlertDialog.Builder alertBuilder = new AlertDialog.Builder(ctx);
         alertBuilder.setView(view);
         final EditText userInput = (EditText) view.findViewById(R.id.userinput);
         alertBuilder.setCancelable(true).setPositiveButton("Ok", new DialogInterface.OnClickListener() {
@@ -136,13 +141,14 @@ public class OfflineFragment extends android.app.Fragment {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 password = userInput.getText().toString();
-                saltHMAC = genRandomBytes();
+                saltHMAC = Util.genRandomBytes();
                 challengeMethod(saltHMAC, CHALLENGE_ENC);
             }
         });
         Dialog dialog = alertBuilder.create();
         dialog.show();
     }
+
     private void decryptMethod(){
         View view = LayoutInflater.from(getActivity()).inflate(R.layout.password_dialog, null);
 
@@ -174,14 +180,12 @@ public class OfflineFragment extends android.app.Fragment {
         startActivityForResult(intent, challenge_mode);
     }
 
-    private byte[] genRandomBytes(){
-        byte[] bytes = new byte[32];
-        new Random().nextBytes(bytes);
-        return bytes;
-    }
 
+    ProgressDialog dialog;
+    @TargetApi(Build.VERSION_CODES.M)
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
+
         // TODO Auto-generated method stub
         if(resultCode == Activity.RESULT_CANCELED){
             System.out.println("Encryption canceled. Req code: "+requestCode);
@@ -197,7 +201,6 @@ public class OfflineFragment extends android.app.Fragment {
                     saveFile(null,CALL_ENCRYPTION);
                 }
                 else{
-
                     decrypted = CryptSuite.decryptFile(encrypted, password, keyHMAC, tokenSerial);
                     if (decrypted == null)
                             return;
@@ -217,6 +220,7 @@ public class OfflineFragment extends android.app.Fragment {
         else if(requestCode == RESULT_SAVE_DECRYPTED){
             try {
                 saveFile(data.getData(),CALL_DECRYPTION);
+                dialog.dismiss();
             } catch (Exception e) {
                 e.printStackTrace();
             }

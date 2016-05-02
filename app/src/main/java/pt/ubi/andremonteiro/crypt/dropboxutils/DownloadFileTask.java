@@ -1,9 +1,11 @@
 package pt.ubi.andremonteiro.crypt.dropboxutils;
 
+import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Environment;
 
 import com.dropbox.core.DbxException;
@@ -46,6 +48,7 @@ public class DownloadFileTask extends AsyncTask<FileMetadata, Void, File> {
         }
     }
 
+    @TargetApi(Build.VERSION_CODES.KITKAT)
     @Override
     protected File doInBackground(FileMetadata... params) {
         FileMetadata metadata = params[0];
@@ -69,13 +72,17 @@ public class DownloadFileTask extends AsyncTask<FileMetadata, Void, File> {
                 mDbxClient.files().download(metadata.getPathLower(), metadata.getRev())
                     .download(outputStream);
             }
+            //temp file and decrypt
+            File temp = File.createTempFile("ybctemp",".temp");
+            
+
 
             // Tell android about the file
             Intent intent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-            intent.setData(Uri.fromFile(file));
+            intent.setData(Uri.fromFile(temp));
             mContext.sendBroadcast(intent);
 
-            return file;
+            return temp;
         } catch (DbxException | IOException e) {
             mException = e;
         }

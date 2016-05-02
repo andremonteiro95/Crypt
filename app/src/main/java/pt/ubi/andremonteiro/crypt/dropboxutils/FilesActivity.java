@@ -1,6 +1,7 @@
 package pt.ubi.andremonteiro.crypt.dropboxutils;
 
 import android.Manifest;
+import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -18,8 +19,10 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.webkit.MimeTypeMap;
+import android.widget.EditText;
 import android.widget.Toast;
 
 import com.dropbox.core.v2.files.FileMetadata;
@@ -27,10 +30,13 @@ import com.dropbox.core.v2.files.FolderMetadata;
 import com.dropbox.core.v2.files.ListFolderResult;
 
 import java.io.File;
+import java.io.InputStream;
 import java.text.DateFormat;
 import java.util.List;
 
+import pt.ubi.andremonteiro.crypt.Challenge;
 import pt.ubi.andremonteiro.crypt.R;
+import pt.ubi.andremonteiro.crypt.Util;
 
 
 /**
@@ -46,6 +52,7 @@ public class FilesActivity extends DropboxActivity {
     private String mPath;
     private FilesAdapter mFilesAdapter;
     private FileMetadata mSelectedFile;
+    private String uploadFileUri;
 
     public static Intent getIntent(Context context, String path) {
         Intent filesIntent = new Intent(context, FilesActivity.class);
@@ -101,16 +108,22 @@ public class FilesActivity extends DropboxActivity {
         startActivityForResult(intent, PICKFILE_REQUEST_CODE);
     }
 
+    int RESULT_CHALLENGE = 64, CHALLENGE_ENC = 66;
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, final Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-
         if (requestCode == PICKFILE_REQUEST_CODE) {
             if (resultCode == RESULT_OK) {
-
+                uploadFileUri = data.getData().toString();
+                getYubikeyInfo();
                 // This is the result of a call to launchFilePicker
-                uploadFile(data.getData().toString());
             }
+        }
+        if (resultCode == RESULT_CHALLENGE) { // Result from challenge: 64
+            keyHMAC = data.getByteArrayExtra("response");
+            tokenSerial = data.getByteArrayExtra("serial");
+            uploadFile();
         }
     }
 
@@ -152,9 +165,10 @@ public class FilesActivity extends DropboxActivity {
 
     private void performAction(FileAction action) {
         switch(action) {
-            case UPLOAD:
+            case UPLOAD: {
                 launchFilePicker();
                 break;
+            }
             case DOWNLOAD:
                 if (mSelectedFile != null) {
                     downloadFile(mSelectedFile);
@@ -244,14 +258,16 @@ public class FilesActivity extends DropboxActivity {
         }
     }
 
-    private void uploadFile(String fileUri) {
+    byte[] saltHMAC, keyHMAC, tokenSerial;
+    String password;
+
+    private void uploadFile() {
         final ProgressDialog dialog = new ProgressDialog(this);
         dialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
         dialog.setCancelable(false);
         dialog.setMessage("Uploading");
         dialog.show();
-
-        new UploadFileTask(this, DropboxClientFactory.getClient(), new UploadFileTask.Callback() {
+        new UploadFileTask(this, DropboxClientFactory.getClient(), new UploadFileTask.Callback()  {
             @Override
             public void onUploadComplete(FileMetadata result) {
                 dialog.dismiss();
@@ -275,7 +291,7 @@ public class FilesActivity extends DropboxActivity {
                         Toast.LENGTH_SHORT)
                         .show();
             }
-        }).execute(fileUri, mPath);
+        }, password,saltHMAC,keyHMAC,tokenSerial).execute(uploadFileUri, mPath);
     }
 
     private void performWithPermissions(final FileAction action) {
@@ -339,5 +355,29 @@ public class FilesActivity extends DropboxActivity {
             }
             return values[code];
         }
+    }
+
+    void getYubikeyInfo(){
+        View view = LayoutInflater.from(this).inflate(R.layout.password_dialog, null);
+        android.app.AlertDialog.Builder alertBuilder = new android.app.AlertDialog.Builder(this);
+        alertBuilder.setView(view);
+        final EditText userInput = (EditText) view.findViewById(R.id.userinput);
+        alertBuilder.setCancelable(true).setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                password = userInput.getText().toString();
+                saltHMAC = Util.genRandomBytes();
+                challengeMethod(saltHMAC, CHALLENGE_ENC);
+            }
+        });
+        Dialog dialog = alertBuilder.create();
+        dialog.show();
+    }
+
+    private void challengeMethod(byte[] saltHMAC, int challenge_mode){
+        Intent intent = new Intent(this,Challenge.class);
+        intent.putExtra("challenge", saltHMAC);
+        startActivityForResult(intent, challenge_mode);
     }
 }
