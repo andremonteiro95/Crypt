@@ -53,6 +53,7 @@ public class FilesActivity extends DropboxActivity {
     private FilesAdapter mFilesAdapter;
     private FileMetadata mSelectedFile;
     private String uploadFileUri;
+    boolean isDownload = false;
 
     public static Intent getIntent(Context context, String path) {
         Intent filesIntent = new Intent(context, FilesActivity.class);
@@ -123,7 +124,11 @@ public class FilesActivity extends DropboxActivity {
         if (resultCode == RESULT_CHALLENGE) { // Result from challenge: 64
             keyHMAC = data.getByteArrayExtra("response");
             tokenSerial = data.getByteArrayExtra("serial");
-            uploadFile();
+            if (isDownload){
+                downloadFile(mSelectedFile);
+                isDownload=false;
+            }
+            else uploadFile();
         }
     }
 
@@ -171,7 +176,9 @@ public class FilesActivity extends DropboxActivity {
             }
             case DOWNLOAD:
                 if (mSelectedFile != null) {
-                    downloadFile(mSelectedFile);
+                    isDownload=true;
+                    getYubikeyInfo();
+                    //downloadFile(mSelectedFile);
                 } else {
                     Log.e(TAG, "No file selected to download.");
                 }
@@ -238,7 +245,7 @@ public class FilesActivity extends DropboxActivity {
                         Toast.LENGTH_SHORT)
                         .show();
             }
-        }).execute(file);
+        }, password, keyHMAC, tokenSerial).execute(file);
 
     }
 
