@@ -193,8 +193,6 @@ public class OfflineFragment extends android.app.Fragment {
         else if (resultCode == RESULT_CHALLENGE){ // Result from challenge: 64
             keyHMAC = data.getByteArrayExtra("response");
             tokenSerial = data.getByteArrayExtra("serial");
-            //System.out.println("Token Serial: "+Util.byteArrayToString(tokenSerial));
-            //System.out.println("Response Challenge: " + Util.byteArrayToString(result));;
             try {
                 if (requestCode == CHALLENGE_ENC) {
                     encrypted = CryptSuite.encryptFile(inputStream, password, saltHMAC, keyHMAC, tokenSerial);

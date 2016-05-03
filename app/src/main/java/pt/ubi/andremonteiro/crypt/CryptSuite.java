@@ -49,17 +49,11 @@ public class CryptSuite {
         byte[] key = skf.generateSecret(pbekey).getEncoded();
         byte[] iv = new byte[16];
         new Random().nextBytes(iv);
-        //System.out.println("Salt: " + Util.byteArrayToString(salt));
-        //System.out.println("Key:  " + Util.byteArrayToString(key));
-        //System.out.println("IV:   " + Util.byteArrayToString(iv));
-        System.out.println("KEY ENC: "+ Util.byteArrayToString(key));
-        System.out.println("IV  ENC: "+ Util.byteArrayToString(iv));
         Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
         try {
             cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, 0, 32, "AES"), new IvParameterSpec(iv));
         }
         catch(IllegalArgumentException e){
-            //System.out.println("Key too short");
             e.printStackTrace();
         }
         //HEADER = Version 4 bytes, Cypher Suite 4 bytes, Salt 32 bytes, IV 16 bytes, Iteraçoes 4 bytes, validation 32 bytes
@@ -149,7 +143,6 @@ public class CryptSuite {
         ByteArrayOutputStream byteos = new ByteArrayOutputStream();
         byteos.write(password);
         byteos.write(tokenSerial);
-        System.out.println("byteos "+Util.byteArrayToString(byteos.toByteArray()));
         MessageDigest md = MessageDigest.getInstance("SHA-256");
         md.update(byteos.toByteArray());
         return md.digest();
