@@ -10,6 +10,7 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
@@ -29,12 +30,26 @@ import com.dropbox.core.v2.files.FileMetadata;
 import com.dropbox.core.v2.files.FolderMetadata;
 import com.dropbox.core.v2.files.ListFolderResult;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
+
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
 import java.text.DateFormat;
 import java.util.List;
 
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+
 import pt.ubi.andremonteiro.crypt.Challenge;
+import pt.ubi.andremonteiro.crypt.CryptSuite;
 import pt.ubi.andremonteiro.crypt.R;
 import pt.ubi.andremonteiro.crypt.Util;
 
@@ -117,6 +132,7 @@ public class FilesActivity extends DropboxActivity {
         if (requestCode == PICKFILE_REQUEST_CODE) {
             if (resultCode == RESULT_OK) {
                 uploadFileUri = data.getData().toString();
+                saltHMAC = Util.genRandomBytes();
                 getYubikeyInfo();
                 // This is the result of a call to launchFilePicker
             }
@@ -125,8 +141,15 @@ public class FilesActivity extends DropboxActivity {
             keyHMAC = data.getByteArrayExtra("response");
             tokenSerial = data.getByteArrayExtra("serial");
             if (isDownload){
-                downloadFile(mSelectedFile);
-                isDownload=false;
+                try {
+                    byte[] decrypted = CryptSuite.decryptFile(resultArray,password,keyHMAC,tokenSerial);
+                    File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                    File file = new File(path, "things.jpg");
+                    FileUtils.writeByteArrayToFile(file, decrypted);
+                    viewFileInExternalApp(file);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
             else uploadFile();
         }
@@ -177,8 +200,7 @@ public class FilesActivity extends DropboxActivity {
             case DOWNLOAD:
                 if (mSelectedFile != null) {
                     isDownload=true;
-                    getYubikeyInfo();
-                    //downloadFile(mSelectedFile);
+                    downloadFile(mSelectedFile);
                 } else {
                     Log.e(TAG, "No file selected to download.");
                 }
@@ -218,6 +240,9 @@ public class FilesActivity extends DropboxActivity {
         }).execute(mPath);
     }
 
+    File resultDownload;
+    byte[] resultArray=null;
+
     private void downloadFile(FileMetadata file) {
         final ProgressDialog dialog = new ProgressDialog(this);
         dialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
@@ -228,11 +253,21 @@ public class FilesActivity extends DropboxActivity {
         new DownloadFileTask(FilesActivity.this, DropboxClientFactory.getClient(), new DownloadFileTask.Callback() {
             @Override
             public void onDownloadComplete(File result) {
-                dialog.dismiss();
+
 
                 if (result != null) {
-                    viewFileInExternalApp(result);
+                    resultDownload = result;
+
+                    try {
+                        resultArray = IOUtils.toByteArray(new FileInputStream(resultDownload));
+                        saltHMAC = CryptSuite.getSaltFromFile(resultArray);
+                        getYubikeyInfo();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                   // viewFileInExternalApp(result);
                 }
+                dialog.dismiss();
             }
 
             @Override
@@ -245,7 +280,7 @@ public class FilesActivity extends DropboxActivity {
                         Toast.LENGTH_SHORT)
                         .show();
             }
-        }, password, keyHMAC, tokenSerial).execute(file);
+        }).execute(file);
 
     }
 
@@ -374,7 +409,6 @@ public class FilesActivity extends DropboxActivity {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 password = userInput.getText().toString();
-                saltHMAC = Util.genRandomBytes();
                 challengeMethod(saltHMAC, CHALLENGE_ENC);
             }
         });

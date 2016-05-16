@@ -42,22 +42,16 @@ public class DownloadFileTask extends AsyncTask<FileMetadata, Void, File> {
     private final DbxClientV2 mDbxClient;
     private final Callback mCallback;
     private Exception mException;
-    private String mPassword;
-    private byte[] mHmacKey;
-    private byte[] mTokenSerial;
 
     public interface Callback {
         void onDownloadComplete(File result);
         void onError(Exception e);
     }
 
-    public DownloadFileTask(Context context, DbxClientV2 dbxClient, Callback callback, String password, byte[] hmacKey, byte[] tokenSerial) {
+    public DownloadFileTask(Context context, DbxClientV2 dbxClient, Callback callback) {
         mContext = context;
         mDbxClient = dbxClient;
         mCallback = callback;
-        mPassword = password;
-        mHmacKey = hmacKey;
-        mTokenSerial = tokenSerial;
     }
 
     @Override
@@ -94,20 +88,13 @@ public class DownloadFileTask extends AsyncTask<FileMetadata, Void, File> {
                 mDbxClient.files().download(metadata.getPathLower(), metadata.getRev())
                     .download(outputStream);
             }
-            //temp file and decrypt
-            File temp = File.createTempFile("ybctemp",".temp");
-            InputStream is = new FileInputStream(file);
-            byte[] fileBytes = Util.getBytesFromInputStream(is);
-            byte[] decrypted = CryptSuite.decryptFile(fileBytes,mPassword,mHmacKey,mTokenSerial);
-            FileUtils.writeByteArrayToFile(temp, decrypted);
-            System.out.println("all gud");
 
             // Tell android about the file
             Intent intent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-            intent.setData(Uri.fromFile(temp));
+            intent.setData(Uri.fromFile(file));
             mContext.sendBroadcast(intent);
 
-            return temp;
+            return file;
         } catch (DbxException | IOException e) {
             mException = e;
         } catch (Exception e) {
