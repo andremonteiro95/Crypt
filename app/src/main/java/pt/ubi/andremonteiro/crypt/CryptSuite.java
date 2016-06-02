@@ -19,6 +19,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Random;
 
 import javax.crypto.BadPaddingException;
@@ -65,11 +66,18 @@ public class CryptSuite {
         byteos.write(YC_FILE_CIPHER);
         byteos.write(salt);
         byteos.write(iv);
-        byteos.write(ByteBuffer.allocate(4).putInt(iterations).array());
+
+        // Compatibilidade Windows: reverse iteraçoes
+        byte[] iterationsReverse = Util.reverseByteArray(ByteBuffer.allocate(4).putInt(iterations).array());
+        byteos.write(iterationsReverse);
+        // End compatibilidade
+
         byteos.write(getValidation(password.getBytes(), tokenSerial));
         //FILE BEGIN
         byteos.write(encrypted);
         //HMAC BEGIN
+        System.out.println("key "+Util.byteArrayToString(hmacKey));
+        System.out.println(Util.byteArrayToString(getFileHMAC(byteos.toByteArray(), hmacKey, byteos.toByteArray().length)));
         byteos.write(getFileHMAC(byteos.toByteArray(), hmacKey, byteos.toByteArray().length));
 
         inputStream.close();
@@ -100,6 +108,7 @@ public class CryptSuite {
         //if gets to this point -> ready to decrypt
         byte[] iv = Arrays.copyOfRange(file, 40, 56);
         byte[] iterations = Arrays.copyOfRange(file, 56, 60);
+        iterations = Util.reverseByteArray(iterations);
 
         ByteBuffer byteBuffer = ByteBuffer.wrap(iterations);
         System.out.println("Hello "+byteBuffer.getInt());
@@ -142,7 +151,17 @@ public class CryptSuite {
     public static byte[] getValidation(byte[] password, byte[] tokenSerial) throws IOException, NoSuchAlgorithmException {
         ByteArrayOutputStream byteos = new ByteArrayOutputStream();
         byteos.write(password);
-        byteos.write(tokenSerial);
+
+        // Compatibilidade com as apps do Windows (token serial nr reversed + byte vazio) --
+        System.out.println(Util.byteArrayToString(password));
+        System.out.println(Util.byteArrayToString(tokenSerial));
+        byte[] tokenSerialReversed = Util.reverseByteArray(tokenSerial);
+        System.out.println(Util.byteArrayToString(tokenSerialReversed));
+        byteos.write(tokenSerialReversed);
+        byteos.write(new byte[]{0x00});
+        // End compatibilidade
+
+        System.out.println(Util.byteArrayToString(byteos.toByteArray()));
         MessageDigest md = MessageDigest.getInstance("SHA-256");
         md.update(byteos.toByteArray());
         return md.digest();

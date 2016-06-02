@@ -74,4 +74,17 @@ public class Util {
         }
         return builder.toString();
     }
+
+    public static byte[] reverseByteArray(byte[] original){
+        byte[] result = original;
+        byte temp;
+        for(int i = 0; i < result.length / 2; i++)
+        {
+            temp = result[i];
+            result[i] = result[result.length - i - 1];
+            result[result.length - i - 1] = temp;
+        }
+        return result;
+    }
+
 }
