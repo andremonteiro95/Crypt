@@ -32,4 +32,5 @@ dependencies {
     compile 'com.fasterxml.jackson.core:jackson-annotations:2.5.4'
     compile 'com.squareup.picasso:picasso:2.5.2'
     compile 'com.squareup.okhttp:okhttp:2.4.0'
+    compile files('src/core-1.54.0.0.jar')
 }

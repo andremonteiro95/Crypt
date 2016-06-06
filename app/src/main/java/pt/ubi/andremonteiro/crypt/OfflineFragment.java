@@ -40,6 +40,8 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 
+import pt.ubi.andremonteiro.crypt.cryptutils.Rfc2898DeriveBytes;
+
 
 /**
  * A simple {@link Fragment} subclass.
@@ -180,8 +182,6 @@ public class OfflineFragment extends android.app.Fragment {
         startActivityForResult(intent, challenge_mode);
     }
 
-
-    ProgressDialog dialog;
     @TargetApi(Build.VERSION_CODES.M)
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -218,7 +218,6 @@ public class OfflineFragment extends android.app.Fragment {
         else if(requestCode == RESULT_SAVE_DECRYPTED){
             try {
                 saveFile(data.getData(),CALL_DECRYPTION);
-                dialog.dismiss();
             } catch (Exception e) {
                 e.printStackTrace();
             }
