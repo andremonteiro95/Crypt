@@ -185,9 +185,8 @@ public class CryptSuite {
         return md.digest();
     }
 
-    public static byte[] getSaltFromFile(InputStream inputStream) throws IOException { // salt begins at the 9th byte, length 32
-        byte[] salt = new byte[32];
-        inputStream.read(salt,8,40);
+    public static byte[] getSaltFromFile(byte[] file) throws IOException { // salt begins at the 9th byte, length 32
+        byte[] salt = Arrays.copyOfRange(file, 8, 40);
         return salt;
     }
 
@@ -200,7 +199,7 @@ public class CryptSuite {
     }
 
     private static byte[] blockCipherRunner(InputStream inputStream, byte[] key, byte[] iv, boolean encrypt) throws Exception {
-        PaddedBufferedBlockCipher blockCipher;
+        PaddedBufferedBlockCipher blockCipher;         /// charset   http://stackoverflow.com/questions/14397672/bad-padding-exception-pad-block-corrupt-when-calling-dofinal
         blockCipher = new PaddedBufferedBlockCipher(new CBCBlockCipher(new AESEngine()), new PKCS7Padding());
         blockCipher.init(encrypt, new ParametersWithIV(new KeyParameter(key),iv));
         int blockCipherBlockSize = blockCipher.getBlockSize();

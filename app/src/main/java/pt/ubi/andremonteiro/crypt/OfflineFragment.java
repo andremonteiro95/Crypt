@@ -164,7 +164,8 @@ public class OfflineFragment extends android.app.Fragment {
                 password = userInput.getText().toString();
                 byte[] salt = new byte[32];
                 try {
-                    salt = CryptSuite.getSaltFromFile(inputStream);
+                    encrypted = Util.getBytesFromInputStream(inputStream);
+                    salt = CryptSuite.getSaltFromFile(encrypted);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -194,12 +195,13 @@ public class OfflineFragment extends android.app.Fragment {
             tokenSerial = data.getByteArrayExtra("serial");
             try {
                 if (requestCode == CHALLENGE_ENC) {
+                    encrypted = CryptSuite.encryptFile(inputStream, password, saltHMAC, keyHMAC, tokenSerial);
                     saveFile(null,CALL_ENCRYPTION);
                 }
                 else{
                     decrypted = CryptSuite.decryptFile(encrypted, password, keyHMAC, tokenSerial);
                     if (decrypted == null)
-                        return;
+                            return;
                     saveFile(null,CALL_DECRYPTION);
                 }
             } catch (Exception e) {
@@ -208,16 +210,14 @@ public class OfflineFragment extends android.app.Fragment {
         }
         else if(requestCode == RESULT_SAVE_ENCRYPTED){
             try {
-                OutputStream outputStream = saveFile(data.getData(),CALL_ENCRYPTION);
-                CryptSuite.encryptFile(inputStream, password, saltHMAC, keyHMAC, tokenSerial);
+                saveFile(data.getData(),CALL_ENCRYPTION);
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
         else if(requestCode == RESULT_SAVE_DECRYPTED){
             try {
-                OutputStream outputStream = saveFile(data.getData(),CALL_DECRYPTION);
-                CryptSuite.decryptFile(encrypted, password, keyHMAC, tokenSerial);
+                saveFile(data.getData(),CALL_DECRYPTION);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -241,7 +241,7 @@ public class OfflineFragment extends android.app.Fragment {
 
     }
 
-    public OutputStream saveFile(Uri uri, int mode) throws IOException {
+    public void saveFile(Uri uri, int mode) throws IOException {
         if (uri==null){
             Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
             intent.addCategory(Intent.CATEGORY_OPENABLE);
@@ -251,10 +251,15 @@ public class OfflineFragment extends android.app.Fragment {
                 startActivityForResult(intent, RESULT_SAVE_ENCRYPTED);
             else if (mode == CALL_DECRYPTION)
                 startActivityForResult(intent, RESULT_SAVE_DECRYPTED);
-            return null;
+            return;
         }
         ContentResolver cr = getActivity().getContentResolver();
-        return cr.openOutputStream(uri,"w");
+        OutputStream outputStream = cr.openOutputStream(uri,"w");
+        if (mode == CALL_ENCRYPTION) outputStream.write(encrypted);
+        else outputStream.write(decrypted);
+        outputStream.close();
+        encrypted = null;
+        decrypted = null;
     }
 
     // TODO: Rename method, update argument and hook method into UI event
@@ -266,7 +271,7 @@ public class OfflineFragment extends android.app.Fragment {
 
     @Override
     public void onAttach(Context context) {
-        super.onAttach(context);
+            super.onAttach(context);
     }
 
     @Override
