@@ -6,11 +6,18 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.Random;
 
 /**
  * Created by André Monteiro on 15/03/2016.
  */
 public class Util {
+
+    public static byte[] genRandomBytes(){
+        byte[] bytes = new byte[32];
+        new Random().nextBytes(bytes);
+        return bytes;
+    }
 
     public static String byteArrayToString(byte[] x) {
         StringBuilder sb = new StringBuilder();
@@ -67,4 +74,17 @@ public class Util {
         }
         return builder.toString();
     }
+
+    public static byte[] reverseByteArray(byte[] original){
+        byte[] result = original;
+        byte temp;
+        for(int i = 0; i < result.length / 2; i++)
+        {
+            temp = result[i];
+            result[i] = result[result.length - i - 1];
+            result[result.length - i - 1] = temp;
+        }
+        return result;
+    }
+
 }

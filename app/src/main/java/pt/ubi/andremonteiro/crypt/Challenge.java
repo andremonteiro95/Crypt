@@ -59,11 +59,11 @@ public class Challenge extends Activity {
     private static final byte SLOT_CHAL_HMAC2 = 0x38;
     private static byte CHAL_BYTES = 0x20; // 32
     private static final byte RESP_BYTES = 20;
+    private static final byte SERIAL_BYTES = 3;
 
-    private static final byte[] selectCommand = { 0x00, (byte) 0xA4, 0x04,
-            0x00, 0x07, (byte) 0xA0, 0x00, 0x00, 0x05, 0x27, 0x20, 0x01, 0x00 };
-    private static byte[] chalCommand = { 0x00, 0x01, SLOT_CHAL_HMAC2,
-            0x00, CHAL_BYTES };
+    private static final byte[] selectCommand = { 0x00, (byte) 0xA4, 0x04, 0x00, 0x07, (byte) 0xA0, 0x00, 0x00, 0x05, 0x27, 0x20, 0x01, 0x00 };
+    private static byte[] chalCommand = { 0x00, 0x01, SLOT_CHAL_HMAC2, 0x00, CHAL_BYTES };
+    private static byte[] serialCommand = { 0x00, 0x01, 0x10, 0x00, CHAL_BYTES };
 
     private AlertDialog swipeDialog;
 
@@ -160,27 +160,36 @@ public class Challenge extends Activity {
     private void doChallengeYubiKey(IsoDep isoTag, int slot, byte[] challenge) throws IOException {
         if (challenge == null || challenge.length != CHAL_BYTES)
             return;
+        Intent data = getIntent();
         byte[] apdu = new byte[chalCommand.length + CHAL_BYTES];
         System.arraycopy(chalCommand, 0, apdu, 0, chalCommand.length);
         if (slot == 1)
             apdu[2] = SLOT_CHAL_HMAC1;
         System.arraycopy(challenge, 0, apdu, chalCommand.length, CHAL_BYTES);
-
         byte[] respApdu = isoTag.transceive(apdu);
-        if (respApdu.length == 22 && respApdu[20] == (byte) 0x90
-                && respApdu[21] == 0x00) {
+        if (respApdu.length == 22 && respApdu[20] == (byte) 0x90 && respApdu[21] == 0x00) {
             // Get the secret
             byte[] resp = new byte[RESP_BYTES];
             System.arraycopy(respApdu, 0, resp, 0, RESP_BYTES);
-            Intent data = getIntent();
             data.putExtra("response", resp);
-            data.putExtra("serial", isoTag.getTag().getId());
+        } else {
+            Toast.makeText(this, "Error: challenge failed.", Toast.LENGTH_LONG)
+                    .show();
+            setResult(RESULT_CANCELED,getIntent());
+        }
 
+        // Get serial ID
+        byte[] apduserial = new byte[serialCommand.length + CHAL_BYTES];
+        System.arraycopy(serialCommand, 0, apduserial, 0, serialCommand.length);
+        byte[] respSerial = isoTag.transceive(apduserial);
+        if (respSerial.length == 6 && respSerial[5] == 0x00 && respSerial[4] == (byte) 0x90){
+            byte[] resp = new byte[SERIAL_BYTES];
+            System.arraycopy(respSerial, 1, resp, 0, SERIAL_BYTES);
+            data.putExtra("serial", resp);
             setResult(RESULT_CHALLENGE_OK, data); // This is where the result gets sent back
         } else {
             Toast.makeText(this, "Error: challenge failed.", Toast.LENGTH_LONG)
                     .show();
-            System.out.println("challenge failed");
             setResult(RESULT_CANCELED,getIntent());
         }
     }
@@ -196,7 +205,7 @@ public class Challenge extends Activity {
         IntentFilter iso = new IntentFilter(NfcAdapter.ACTION_TAG_DISCOVERED);
         NfcAdapter adapter = NfcAdapter.getDefaultAdapter(this);
         if(adapter == null) {
-            Toast.makeText(this, "no nfc", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Your smartphone does not support NFC", Toast.LENGTH_LONG).show();
             return;
         }
         if(adapter.isEnabled()) {
@@ -207,7 +216,7 @@ public class Challenge extends Activity {
             );
         } else {
             AlertDialog.Builder dialog = new AlertDialog.Builder(this);
-            dialog.setTitle("nfc off");
+            dialog.setTitle("NFC is disabled");
             dialog.setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
                 public void onClick(DialogInterface dialog, int which) {
                     Intent settings = new Intent(android.provider.Settings.ACTION_NFC_SETTINGS);

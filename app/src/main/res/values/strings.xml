@@ -11,4 +11,11 @@
     <string name="offline_title" />
     <string name="encryptfile">Encrypt file</string>
     <string name="decryptfile">Decrypt file</string>
+    <string name="home">Home</string>
+    <string name="offline">Offline</string>
+    <string name="dropbox">Dropbox</string>
+    <string name="login_with_dropbox">Login with Dropbox</string>
+    <string name="email">E-mail:</string>
+    <string name="name">Name:</string>
+    <string name="acctype">Type:</string>
 </resources>

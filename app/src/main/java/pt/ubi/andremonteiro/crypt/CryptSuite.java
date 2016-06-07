@@ -3,8 +3,18 @@ package pt.ubi.andremonteiro.crypt;
 import android.app.Activity;
 import android.content.Intent;
 import android.util.Base64;
+import android.widget.Toast;
+
+import org.spongycastle.crypto.InvalidCipherTextException;
+import org.spongycastle.crypto.engines.AESEngine;
+import org.spongycastle.crypto.paddings.PKCS7Padding;
+import org.spongycastle.crypto.paddings.PaddedBufferedBlockCipher;
+import org.spongycastle.crypto.modes.CBCBlockCipher;
+import org.spongycastle.crypto.params.KeyParameter;
+import org.spongycastle.crypto.params.ParametersWithIV;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileReader;
@@ -19,6 +29,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Random;
 
 import javax.crypto.BadPaddingException;
@@ -32,6 +43,8 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 
+import pt.ubi.andremonteiro.crypt.cryptutils.Rfc2898DeriveBytes;
+
 /**
  * Created by André Monteiro on 09/03/2016.
  */
@@ -40,43 +53,42 @@ public class CryptSuite {
     private static final int iterations = 64000;
     private static final int keysize = 32;
     private static byte[] YC_FILE_SPEC = { 0x59, 0x43, 0x46, 0x01 };
-    private static byte[] YC_FILE_CIPHER = { 0x01, 0x01, 0x01, 0x01 };
+    private static byte[] YC_FILE_CIPHER = { 0x00, 0x00, 0x11, 0x00 };
 
-    public static byte[] encryptFile(InputStream inputStream, String password, byte[] salt, byte[] hmacKey, byte[] tokenSerial) throws NoSuchAlgorithmException, InvalidKeySpecException, NoSuchPaddingException, InvalidAlgorithmParameterException, InvalidKeyException, IOException, BadPaddingException, IllegalBlockSizeException {
-        SecretKeyFactory skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
-        PBEKeySpec pbekey = new PBEKeySpec(password.toCharArray(),hmacKey,iterations,keysize*8);
-
-        byte[] key = skf.generateSecret(pbekey).getEncoded();
+    public static byte[] encryptFile(InputStream inputStream, String password, byte[] salt, byte[] hmacKey, byte[] tokenSerial) throws Exception {
+        Rfc2898DeriveBytes rfc = new Rfc2898DeriveBytes(password,hmacKey,iterations);
+        byte[] mackey = rfc.getBytes(keysize);
+        byte[] enckey = rfc.getBytes(keysize);
         byte[] iv = new byte[16];
         new Random().nextBytes(iv);
-        //System.out.println("Salt: " + Util.byteArrayToString(salt));
-        //System.out.println("Key:  " + Util.byteArrayToString(key));
-        //System.out.println("IV:   " + Util.byteArrayToString(iv));
-        System.out.println("KEY ENC: "+ Util.byteArrayToString(key));
-        System.out.println("IV  ENC: "+ Util.byteArrayToString(iv));
-        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+
+        //HEADER = Version 4 bytes, Cypher Suite 4 bytes, Salt 32 bytes, IV 16 bytes, Iteraçoes 4 bytes, validation 32 bytes
+
+        byte[] encrypted = null;
         try {
-            cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, 0, 32, "AES"), new IvParameterSpec(iv));
-        }
-        catch(IllegalArgumentException e){
-            //System.out.println("Key too short");
+            encrypted = blockCipherRunner(inputStream,enckey,iv,true);
+        } catch (Exception e) {
             e.printStackTrace();
         }
-        //HEADER = Version 4 bytes, Cypher Suite 4 bytes, Salt 32 bytes, IV 16 bytes, Iteraçoes 4 bytes, validation 32 bytes
-        byte[] encrypted = cipher.doFinal(Util.getBytesFromInputStream(inputStream));
-
         ByteArrayOutputStream byteos = new ByteArrayOutputStream();
         //HEADER BEGIN
         byteos.write(YC_FILE_SPEC);
         byteos.write(YC_FILE_CIPHER);
         byteos.write(salt);
         byteos.write(iv);
-        byteos.write(ByteBuffer.allocate(4).putInt(iterations).array());
-        byteos.write(getValidation(password.getBytes(), tokenSerial));
+
+        // Compatibilidade Windows: reverse iteraçoes
+        byte[] iterationsReverse = Util.reverseByteArray(ByteBuffer.allocate(4).putInt(iterations).array());
+        byteos.write(iterationsReverse);
+        // End compatibilidade
+
+        byteos.write(getValidation(password.getBytes("UTF-8"), tokenSerial));
+
         //FILE BEGIN
         byteos.write(encrypted);
+
         //HMAC BEGIN
-        byteos.write(getFileHMAC(byteos.toByteArray(), hmacKey, byteos.toByteArray().length));
+        byteos.write(getFileHMAC(byteos.toByteArray(), mackey, byteos.toByteArray().length));
 
         inputStream.close();
         return byteos.toByteArray();
@@ -91,36 +103,49 @@ public class CryptSuite {
             System.out.println("Wrong cipher version.");
             return null;
         }
-        if (!validateKey(file, password.getBytes(), tokenSerial)){
+        if (!validateKey(file, password.getBytes("UTF-8"), tokenSerial)){
             System.out.println("Invalid credentials. Check if you are entering the correct password and using the correct Yubikey token.");
             return null;
         }
+
+        //if gets to this point -> ready to decrypt
+        byte[] iv = Arrays.copyOfRange(file, 40, 56);
+        byte[] iterations = Arrays.copyOfRange(file, 56, 60);
+        iterations = Util.reverseByteArray(iterations);
+
+        ByteBuffer byteBuffer = ByteBuffer.wrap(iterations);
+        int intIters = byteBuffer.getInt();
+
+        /*SecretKeyFactory skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
+        PBEKeySpec pbekey = new PBEKeySpec(password.toCharArray(),hmacKey,64000,keysize*8);
+        byte[] key = skf.generateSecret(pbekey).getEncoded();*/
+
+        Rfc2898DeriveBytes rfc = new Rfc2898DeriveBytes(password,hmacKey,intIters);
+        byte[] mackey = rfc.getBytes(keysize);
+        byte[] enckey = rfc.getBytes(keysize);
+
         try {
-            if (!Arrays.equals( getFileHMAC(file,hmacKey,file.length-32) , Arrays.copyOfRange(file,file.length-32, file.length) )){
+            if (!Arrays.equals( getFileHMAC(file,mackey,file.length-32) , Arrays.copyOfRange(file,file.length-32, file.length) )){
                 System.out.println("File corrupted. Invalid HMAC.");
                 return null;
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-        //if gets to this point -> ready to decrypt
-        byte[] iv = Arrays.copyOfRange(file, 40, 56);
-        byte[] iterations = Arrays.copyOfRange(file, 56, 60);
 
-        ByteBuffer byteBuffer = ByteBuffer.wrap(iterations);
-        System.out.println("Hello "+byteBuffer.getInt());
-        SecretKeyFactory skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
-        PBEKeySpec pbekey = new PBEKeySpec(password.toCharArray(),hmacKey,64000,keysize*8);
-        //System.out.println("PBE KEY DEC: "+pbekey.);
-
-        byte[] key = skf.generateSecret(pbekey).getEncoded();
-        System.out.println("KEY DEC: "+ Util.byteArrayToString(key));
-        System.out.println("IV  DEC: "+ Util.byteArrayToString(iv));
-
-        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+       /* Cipher cipher = Cipher.getInstance("AES/CBC/PKCS7Padding");
         cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, 0, 32, "AES"), new IvParameterSpec(iv));
         //HEADER = Version 4 bytes, Cypher Suite 4 bytes, Salt 32 bytes, IV 16 bytes, Iteraçoes 4 bytes, validation 32 bytes
         byte[] decrypted = cipher.doFinal(Arrays.copyOfRange(file,92,file.length-32));
+       */
+
+        ByteArrayInputStream inputStream = new ByteArrayInputStream(Arrays.copyOfRange(file,92,file.length-32));
+        byte[] decrypted = null;
+        try {
+            decrypted = blockCipherRunner(inputStream,enckey,iv,false);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         return decrypted;
     }
 
@@ -148,7 +173,13 @@ public class CryptSuite {
     public static byte[] getValidation(byte[] password, byte[] tokenSerial) throws IOException, NoSuchAlgorithmException {
         ByteArrayOutputStream byteos = new ByteArrayOutputStream();
         byteos.write(password);
-        byteos.write(tokenSerial);
+
+        // Compatibilidade com as apps do Windows (token serial nr reversed + byte vazio) --
+        byte[] tokenSerialReversed = Util.reverseByteArray(tokenSerial);
+        byteos.write(tokenSerialReversed);
+        byteos.write(new byte[]{0x00});
+        // End compatibilidade
+
         MessageDigest md = MessageDigest.getInstance("SHA-256");
         md.update(byteos.toByteArray());
         return md.digest();
@@ -156,7 +187,6 @@ public class CryptSuite {
 
     public static byte[] getSaltFromFile(byte[] file) throws IOException { // salt begins at the 9th byte, length 32
         byte[] salt = Arrays.copyOfRange(file, 8, 40);
-        System.out.println(Util.byteArrayToString(salt));
         return salt;
     }
 
@@ -166,6 +196,27 @@ public class CryptSuite {
         PBEKeySpec spec = new PBEKeySpec(password, salt, iterations, bytes * 8);
         SecretKeyFactory skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
         return skf.generateSecret(spec).getEncoded();
+    }
+
+    private static byte[] blockCipherRunner(InputStream inputStream, byte[] key, byte[] iv, boolean encrypt) throws Exception {
+        PaddedBufferedBlockCipher blockCipher;         /// charset   http://stackoverflow.com/questions/14397672/bad-padding-exception-pad-block-corrupt-when-calling-dofinal
+        blockCipher = new PaddedBufferedBlockCipher(new CBCBlockCipher(new AESEngine()), new PKCS7Padding());
+        blockCipher.init(encrypt, new ParametersWithIV(new KeyParameter(key),iv));
+        int blockCipherBlockSize = blockCipher.getBlockSize();
+        byte[] buffer = new byte[blockCipherBlockSize * 8];
+        byte[] processedBuffer = new byte[blockCipherBlockSize * 8];
+        int read;
+        int processed;
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        while (inputStream.available()>0)
+        {
+            read = inputStream.read(buffer, 0, buffer.length);
+            processed = blockCipher.processBytes(buffer, 0, read, processedBuffer, 0);
+            outputStream.write(processedBuffer, 0, processed);
+        }
+        processed = blockCipher.doFinal(processedBuffer, 0);
+        outputStream.write(processedBuffer, 0, processed);
+        return outputStream.toByteArray();
     }
 
 }

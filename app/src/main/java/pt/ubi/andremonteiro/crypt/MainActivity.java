@@ -111,7 +111,16 @@ public class MainActivity extends AppCompatActivity
             fragmentManager.beginTransaction()
                     .replace(R.id.mainRelLayout, fragment)
                     .commit();
-            setTitle("Offline Mode");
+            setTitle("Local mode");
+        }
+
+        if (id == R.id.nav_dropbox) {
+            Fragment fragment = new DropboxFragment();
+            FragmentManager fragmentManager = getFragmentManager();
+            fragmentManager.beginTransaction()
+                    .replace(R.id.mainRelLayout, fragment)
+                    .commit();
+            setTitle("Dropbox");
         }
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);

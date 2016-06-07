@@ -5,11 +5,15 @@
         <item
             android:id="@+id/nav_home"
             android:icon="@drawable/ic_menu_home"
-            android:title="Home" />
+            android:title="@string/home" />
         <item
             android:id="@+id/nav_offline"
             android:icon="@drawable/ic_menu_file_cloud_off"
-            android:title="Offline" />
+            android:title="@string/offline" />
+        <item
+            android:id="@+id/nav_dropbox"
+            android:icon="@drawable/ic_file_cloud_queue"
+            android:title="@string/dropbox" />
     </group>
 
 </menu>
