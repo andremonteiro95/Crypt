@@ -205,7 +205,7 @@ public class Challenge extends Activity {
         IntentFilter iso = new IntentFilter(NfcAdapter.ACTION_TAG_DISCOVERED);
         NfcAdapter adapter = NfcAdapter.getDefaultAdapter(this);
         if(adapter == null) {
-            Toast.makeText(this, "no nfc", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Your smartphone does not support NFC", Toast.LENGTH_LONG).show();
             return;
         }
         if(adapter.isEnabled()) {
@@ -216,7 +216,7 @@ public class Challenge extends Activity {
             );
         } else {
             AlertDialog.Builder dialog = new AlertDialog.Builder(this);
-            dialog.setTitle("nfc off");
+            dialog.setTitle("NFC is disabled");
             dialog.setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
                 public void onClick(DialogInterface dialog, int which) {
                     Intent settings = new Intent(android.provider.Settings.ACTION_NFC_SETTINGS);
