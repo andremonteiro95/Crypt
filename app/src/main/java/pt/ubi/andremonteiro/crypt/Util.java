@@ -60,6 +60,12 @@ public class Util {
         return IOUtils.toByteArray(is);
     }
 
+    public static byte[] getHeaderFromInputStream(InputStream is) throws IOException {
+        byte[] header = new byte[92];
+        is.read(header,0,92);
+        return header;
+    }
+
     public static String getFileNameFromPath(String path){
         String[] tokens = path.split("/");
         return tokens[tokens.length-1];

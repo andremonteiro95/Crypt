@@ -40,6 +40,8 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 
+import pt.ubi.andremonteiro.crypt.cryptutils.DecryptTask;
+import pt.ubi.andremonteiro.crypt.cryptutils.EncryptTask;
 import pt.ubi.andremonteiro.crypt.cryptutils.Rfc2898DeriveBytes;
 
 
@@ -126,8 +128,9 @@ public class OfflineFragment extends android.app.Fragment {
         return v;
     }
 
-    byte[] saltHMAC, keyHMAC, encrypted, decrypted, tokenSerial;
+    byte[] saltHMAC, keyHMAC, encrypted, tokenSerial;
     InputStream inputStream;
+    OutputStream outputStream;
     String password, filename;
     int RESULT_CHALLENGE = 64, RESULT_SAVE_ENCRYPTED = 75, RESULT_SAVE_DECRYPTED = 76, CALL_ENCRYPTION = 62, CALL_DECRYPTION = 63, CHALLENGE_ENC = 66, CHALLENGE_DEC = 67;
     Context ctx;
@@ -182,6 +185,8 @@ public class OfflineFragment extends android.app.Fragment {
         startActivityForResult(intent, challenge_mode);
     }
 
+    ProgressDialog dialog;
+
     @TargetApi(Build.VERSION_CODES.M)
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -194,23 +199,29 @@ public class OfflineFragment extends android.app.Fragment {
             keyHMAC = data.getByteArrayExtra("response");
             tokenSerial = data.getByteArrayExtra("serial");
             try {
-                if (requestCode == CHALLENGE_ENC) {
-                    encrypted = CryptSuite.encryptFile(inputStream, password, saltHMAC, keyHMAC, tokenSerial);
-                    saveFile(null,CALL_ENCRYPTION);
-                }
-                else{
-                    decrypted = CryptSuite.decryptFile(encrypted, password, keyHMAC, tokenSerial);
-                    if (decrypted == null)
-                            return;
-                    saveFile(null,CALL_DECRYPTION);
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+                if (requestCode == CHALLENGE_ENC) saveFile(null,CALL_ENCRYPTION);
+                else saveFile(null,CALL_DECRYPTION);
+            } catch (Exception e) { e.printStackTrace(); }
         }
         else if(requestCode == RESULT_SAVE_ENCRYPTED){
             try {
                 saveFile(data.getData(),CALL_ENCRYPTION);
+                ctx = getActivity();
+                dialog=new ProgressDialog(ctx);
+                dialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+                dialog.setCancelable(false);
+                dialog.setMessage("Encrypting");
+                dialog.show();
+                new EncryptTask(inputStream, outputStream, password, saltHMAC, keyHMAC, tokenSerial){
+                    @Override
+                    protected void onPostExecute(Object o) {
+                        super.onPostExecute(o);
+                        dialog.dismiss();
+                        if (o instanceof String){
+                            Toast.makeText(ctx, "Unexpected error: "+o, Toast.LENGTH_LONG).show();
+                        }
+                    }
+                }.execute();
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -218,6 +229,36 @@ public class OfflineFragment extends android.app.Fragment {
         else if(requestCode == RESULT_SAVE_DECRYPTED){
             try {
                 saveFile(data.getData(),CALL_DECRYPTION);
+                ctx = getActivity();
+                dialog=new ProgressDialog(ctx);
+                dialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+                dialog.setCancelable(false);
+                dialog.setMessage("Decrypting");
+                dialog.show();
+                new DecryptTask(encrypted, outputStream, password, keyHMAC, tokenSerial){
+                    @Override
+                    protected void onPostExecute(Object o) {
+                        super.onPostExecute(o);
+                        dialog.dismiss();
+                        if (o instanceof String){
+                            Toast.makeText(ctx, "Unexpected error: "+o, Toast.LENGTH_LONG).show();
+                        }
+                        switch ((int)o){
+                            case 1:
+                                Toast.makeText(ctx, "Wrong file specification.", Toast.LENGTH_LONG).show();
+                                break;
+                            case 2:
+                                Toast.makeText(ctx, "Wrong cipher version.", Toast.LENGTH_LONG).show();
+                                break;
+                            case 3:
+                                Toast.makeText(ctx, "Invalid credentials. Check if you are entering the correct password and using the correct Yubikey token.", Toast.LENGTH_LONG).show();
+                                break;
+                            case 4:
+                                Toast.makeText(ctx, "File corrupted. Invalid HMAC.", Toast.LENGTH_LONG).show();
+                                break;
+                        }
+                    }
+                }.execute();
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -254,12 +295,12 @@ public class OfflineFragment extends android.app.Fragment {
             return;
         }
         ContentResolver cr = getActivity().getContentResolver();
-        OutputStream outputStream = cr.openOutputStream(uri,"w");
-        if (mode == CALL_ENCRYPTION) outputStream.write(encrypted);
+        outputStream = cr.openOutputStream(uri,"w");
+        /*if (mode == CALL_ENCRYPTION) outputStream.write(encrypted);
         else outputStream.write(decrypted);
         outputStream.close();
         encrypted = null;
-        decrypted = null;
+        decrypted = null;*/
     }
 
     // TODO: Rename method, update argument and hook method into UI event
