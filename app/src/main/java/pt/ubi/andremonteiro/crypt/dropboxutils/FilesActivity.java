@@ -15,10 +15,8 @@ import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
-import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -35,23 +33,15 @@ import org.apache.commons.io.IOUtils;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.spec.InvalidKeySpecException;
+import java.io.FileOutputStream;
 import java.text.DateFormat;
 import java.util.List;
-
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
 
 import pt.ubi.andremonteiro.crypt.Challenge;
 import pt.ubi.andremonteiro.crypt.CryptSuite;
 import pt.ubi.andremonteiro.crypt.R;
 import pt.ubi.andremonteiro.crypt.Util;
+import pt.ubi.andremonteiro.crypt.cryptutils.DecryptTask;
 
 
 /**
@@ -125,6 +115,9 @@ public class FilesActivity extends DropboxActivity {
     }
 
     int RESULT_CHALLENGE = 64, CHALLENGE_ENC = 66;
+    ProgressDialog dialog;
+    Context ctx;
+    File file;
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, final Intent data) {
@@ -142,11 +135,41 @@ public class FilesActivity extends DropboxActivity {
             tokenSerial = data.getByteArrayExtra("serial");
             if (isDownload){
                 try {
-                    byte[] decrypted = CryptSuite.decryptFile(resultArray,password,keyHMAC,tokenSerial);
+                    ctx = this;
+                    dialog=new ProgressDialog(this);
+                    dialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+                    dialog.setCancelable(false);
+                    dialog.setMessage("Decrypting");
+                    dialog.show();
                     File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-                    File file = new File(path, "things.jpg");
-                    FileUtils.writeByteArrayToFile(file, decrypted);
-                    viewFileInExternalApp(file);
+                    file = new File(path, "things.jpg");
+                    FileOutputStream fos = new FileOutputStream(file);
+                    new DecryptTask(resultArray, fos, password, keyHMAC, tokenSerial){
+                        @Override
+                        protected void onPostExecute(Object o) {
+                            super.onPostExecute(o);
+                            dialog.dismiss();
+                            if (o instanceof String){
+                                Toast.makeText(ctx, "Unexpected error: "+o, Toast.LENGTH_LONG).show();
+                            }
+                            switch ((int)o){
+                                case 1:
+                                    Toast.makeText(ctx, "Wrong file specification.", Toast.LENGTH_LONG).show();
+                                    break;
+                                case 2:
+                                    Toast.makeText(ctx, "Wrong cipher version.", Toast.LENGTH_LONG).show();
+                                    break;
+                                case 3:
+                                    Toast.makeText(ctx, "Invalid credentials. Check if you are entering the correct password and using the correct Yubikey token.", Toast.LENGTH_LONG).show();
+                                    break;
+                                case 4:
+                                    Toast.makeText(ctx, "File corrupted. Invalid HMAC.", Toast.LENGTH_LONG).show();
+                                    break;
+                            }
+                            viewFileInExternalApp(file);
+                        }
+                    }.execute();
+
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
