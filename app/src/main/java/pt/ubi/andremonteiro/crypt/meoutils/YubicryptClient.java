@@ -1,20 +1,57 @@
 package pt.ubi.andremonteiro.crypt.meoutils;
 
+import java.io.IOException;
+
+import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
 
 /**
  * Created by André Monteiro on 08/06/2016.
  */
-public class YubicryptClient {
+public class YubicryptClient {   //https://futurestud.io/blog/oauth-2-on-android-with-retrofit
 
-    final private String apiBaseUrl = "https://yubicryptubi.azurewebsites.net";
-    final private String clientId = "123456";
-    final private String clientSecret = "abcdef";
-    final private String redirectUrl = "https://callback.com";
+    final public static String API_BASE_URL = "https://yubicryptubi.azurewebsites.net";
+    final public static String CLIENT_ID = "123456";
+    final public static String CLIENT_SECRET = "abcdef";
+    final public static String REDIRECT_URI = "https://callback.com";
 
-    OkHttpClient httpClient = new OkHttpClient();
+    private static OkHttpClient.Builder httpClient = new OkHttpClient.Builder();
 
-    public void go(){
-       // httpClient.
+    private static Retrofit.Builder builder =
+            new Retrofit.Builder()
+                    .baseUrl(API_BASE_URL)
+                    .addConverterFactory(GsonConverterFactory.create());
+
+    public static <S> S createService(Class<S> serviceClass) {
+        Retrofit retrofit = builder.client(httpClient.build()).build();
+        return retrofit.create(serviceClass);
+    }
+
+    public static <S> S createService(Class<S> serviceClass, final AccessToken token) {
+        if (token != null) {
+            httpClient.addInterceptor(new Interceptor() {
+                @Override
+                public okhttp3.Response intercept(Chain chain) throws IOException {
+                    Request original = chain.request();
+
+                    Request.Builder requestBuilder = original.newBuilder()
+                            .header("Accept", "application/json")
+                            .header("Authorization",
+                                    token.getTokenType() + " " + token.getAccessToken())
+                            .method(original.method(), original.body());
+
+                    Request request = requestBuilder.build();
+                    return chain.proceed(request);
+                }
+            });
+        }
+
+        OkHttpClient client = httpClient.build();
+        Retrofit retrofit = builder.client(client).build();
+        return retrofit.create(serviceClass);
     }
 }

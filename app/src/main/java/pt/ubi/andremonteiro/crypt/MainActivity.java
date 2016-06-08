@@ -125,6 +125,15 @@ public class MainActivity extends AppCompatActivity
             setTitle("Dropbox");
         }
 
+        if (id == R.id.nav_meocloud) {
+            Fragment fragment = new MeoCloudFragment();
+            FragmentManager fragmentManager = getFragmentManager();
+            fragmentManager.beginTransaction()
+                    .replace(R.id.mainRelLayout, fragment)
+                    .commit();
+            setTitle("Meo Cloud");
+        }
+
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         drawer.closeDrawer(GravityCompat.START);
         return true;

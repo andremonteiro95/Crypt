@@ -6,6 +6,7 @@ import com.dropbox.core.v2.DbxClientV2;
 import com.squareup.picasso.OkHttpDownloader;
 import com.squareup.picasso.Picasso;
 
+
 /**
  * Singleton instance of Picasso pre-configured
  */
