@@ -71,6 +71,16 @@ public class Util {
         return tokens[tokens.length-1];
     }
 
+    public static String removeYubicryptExtension(String string){
+        String[] tokens = string.split("\\.");
+        String result ="";
+        for (int i=0; i<tokens.length-1 ; i++) {
+            if (i!=0) result += ".";
+            result += tokens[i];
+        }
+        return result;
+    }
+
     public static String getFileNameFromPathDec(String path){
         String[] tokens = path.split("/");
         String[] tokens2 = tokens[tokens.length-1].split(".");
