@@ -37,4 +37,5 @@ dependencies {
     compile 'com.squareup.retrofit2:converter-gson:2.0.2'
     compile 'com.squareup.picasso:picasso:2.5.2'
     compile 'com.squareup.okhttp:okhttp:2.7.5'
+    compile 'com.squareup.moshi:moshi:1.2.0'
 }

@@ -6,7 +6,11 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.Random;
+import java.util.TimeZone;
 
 /**
  * Created by André Monteiro on 15/03/2016.
@@ -101,6 +105,12 @@ public class Util {
             result[result.length - i - 1] = temp;
         }
         return result;
+    }
+
+    public static Date getCurrentDate(){
+        Calendar calendar = new GregorianCalendar(TimeZone.getTimeZone("Europe/London"));
+        calendar.add(Calendar.MILLISECOND,TimeZone.getTimeZone("Europe/London").getDSTSavings());
+        return calendar.getTime();
     }
 
 }

@@ -24,8 +24,8 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
-                    android:host="https://callback.com"
-                    android:scheme="yubicrypt" />
+                    android:host="callback.com"
+                    android:scheme="https" />
             </intent-filter>
         </activity>
         <activity android:name=".Challenge" android:theme="@android:style/Theme.Translucent.NoTitleBar"></activity>

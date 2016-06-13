@@ -1,8 +1,10 @@
 package pt.ubi.andremonteiro.crypt;
 
 import android.app.FragmentManager;
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.StrictMode;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.app.Fragment;
@@ -53,6 +55,9 @@ public class MainActivity extends AppCompatActivity
         fragmentManager.beginTransaction()
                 .replace(R.id.mainRelLayout, fragment)
                 .commit();
+
+        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+        StrictMode.setThreadPolicy(policy);
     }
 
     @Override
@@ -62,6 +67,21 @@ public class MainActivity extends AppCompatActivity
             drawer.closeDrawer(GravityCompat.START);
         } else {
             super.onBackPressed();
+        }
+    }
+
+    @Override
+    protected void onResume(){
+        super.onResume();
+        Intent x = getIntent();
+        if (x.getData() != null && x.getData().toString().contains("callback.com"))
+        {
+            Fragment fragment = new MeoCloudFragment();
+            FragmentManager fragmentManager = getFragmentManager();
+            fragmentManager.beginTransaction()
+                    .replace(R.id.mainRelLayout, fragment)
+                    .commit();
+            setTitle("Meo Cloud");
         }
     }
 
