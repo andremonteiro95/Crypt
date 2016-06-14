@@ -165,8 +165,8 @@ public class FilesActivity extends DropboxActivity {
                                 case 4:
                                     Toast.makeText(ctx, "File corrupted. Invalid HMAC.", Toast.LENGTH_LONG).show();
                                     break;
+                                default: viewFileInExternalApp(file);
                             }
-                            viewFileInExternalApp(file);
                         }
                     }.execute();
 

@@ -41,12 +41,6 @@ public class AccessToken {
         this.token_type = token_type;
     }
 
-    public void setExpires_in(Object expires_in) {
-        System.out.println("Class: "+expires_in.getClass());
-        /*Date date = date.
-        this.expires_in = expires_in;*/
-    }
-
     public String getRefresh_token() {
         return refresh_token;
     }
@@ -57,7 +51,7 @@ public class AccessToken {
 
     public void setExpirationDate(){
         expirationDate = new GregorianCalendar(TimeZone.getTimeZone("Europe/London"));
-        expirationDate.add(Calendar.MILLISECOND,TimeZone.getTimeZone("Europe/London").getDSTSavings());
+        //expirationDate.add(Calendar.MILLISECOND,TimeZone.getTimeZone("Europe/London").getDSTSavings());
         expirationDate.add(Calendar.SECOND,expires_in);
     }
 

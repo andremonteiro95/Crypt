@@ -1,5 +1,9 @@
 package pt.ubi.andremonteiro.crypt.meoutils;
 
+import java.util.Calendar;
+import java.util.GregorianCalendar;
+import java.util.TimeZone;
+
 /**
  * Created by André Monteiro on 13/06/2016.
  */
@@ -39,5 +43,11 @@ public class YubicryptFile {
 
     public void setInternalName(String internalName) {
         InternalName = internalName;
+    }
+
+    public String getDate(){
+        Calendar calendar = new GregorianCalendar(TimeZone.getTimeZone("Europe/London"));
+        calendar.add(Calendar.MILLISECOND,TimeZone.getTimeZone("Europe/London").getDSTSavings());
+        return calendar.getTime().toString();
     }
 }
