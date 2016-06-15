@@ -193,7 +193,7 @@ public class OfflineFragment extends android.app.Fragment {
 
         // TODO Auto-generated method stub
         if(resultCode == Activity.RESULT_CANCELED){
-            System.out.println("Encryption canceled. Req code: "+requestCode);
+            Toast.makeText(ctx, "Encryption canceled.", Toast.LENGTH_SHORT).show();
         }
         else if (resultCode == RESULT_CHALLENGE){ // Result from challenge: 64
             keyHMAC = data.getByteArrayExtra("response");
