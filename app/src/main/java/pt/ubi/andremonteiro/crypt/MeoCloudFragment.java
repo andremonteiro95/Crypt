@@ -373,7 +373,6 @@ public class MeoCloudFragment extends Fragment {
             }
             if (requestCode == CALL_ENCRYPTION){
                 filename=Util.getFileNameFromPath(data.getData().getPath());
-                System.out.println("Filename "+filename);
                 saltHMAC = Util.genRandomBytes();
                 getYubikeyInfo();
             }
