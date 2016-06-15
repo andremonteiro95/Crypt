@@ -112,8 +112,6 @@ public class MainActivity extends AppCompatActivity
         // Handle navigation view item clicks here.
         int id = item.getItemId();
 
-        MenuItem settings = (MenuItem)findViewById(R.id.action_settings);
-
         if (id == R.id.nav_home) {
             Fragment fragment = new MainFragment();
             FragmentManager fragmentManager = getFragmentManager();
