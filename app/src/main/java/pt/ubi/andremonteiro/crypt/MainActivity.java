@@ -41,6 +41,8 @@ public class MainActivity extends AppCompatActivity
             }
         });
 
+
+
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
                 this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
@@ -94,16 +96,8 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
 
-        //noinspection SimplifiableIfStatement
-        // TO USE : UNCOMMENT menu -> main.xml
-        /*if (id == R.id.action_settings) {
-            return true;
-        }*/
+        int id = item.getItemId();
 
         return super.onOptionsItemSelected(item);
     }
@@ -117,6 +111,8 @@ public class MainActivity extends AppCompatActivity
     public boolean onNavigationItemSelected(MenuItem item) {
         // Handle navigation view item clicks here.
         int id = item.getItemId();
+
+        MenuItem settings = (MenuItem)findViewById(R.id.action_settings);
 
         if (id == R.id.nav_home) {
             Fragment fragment = new MainFragment();
