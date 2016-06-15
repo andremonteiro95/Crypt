@@ -426,6 +426,7 @@ public class FilesActivity extends DropboxActivity {
     void getYubikeyInfo(){
         View view = LayoutInflater.from(this).inflate(R.layout.password_dialog, null);
         android.app.AlertDialog.Builder alertBuilder = new android.app.AlertDialog.Builder(this);
+        alertBuilder.setTitle("Password:");
         alertBuilder.setView(view);
         final EditText userInput = (EditText) view.findViewById(R.id.userinput);
         alertBuilder.setCancelable(true).setPositiveButton("Ok", new DialogInterface.OnClickListener() {

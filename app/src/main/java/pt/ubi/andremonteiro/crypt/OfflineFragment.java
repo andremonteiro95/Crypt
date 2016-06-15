@@ -96,6 +96,7 @@ public class OfflineFragment extends android.app.Fragment {
             mParam1 = getArguments().getString(ARG_PARAM1);
             mParam2 = getArguments().getString(ARG_PARAM2);
         }
+        ctx=getActivity();
     }
 
     @Override
@@ -139,6 +140,7 @@ public class OfflineFragment extends android.app.Fragment {
         View view = LayoutInflater.from(getActivity()).inflate(R.layout.password_dialog, null);
         ctx = getActivity();
         AlertDialog.Builder alertBuilder = new AlertDialog.Builder(ctx);
+        alertBuilder.setTitle("Password:");
         alertBuilder.setView(view);
         final EditText userInput = (EditText) view.findViewById(R.id.userinput);
         alertBuilder.setCancelable(true).setPositiveButton("Ok", new DialogInterface.OnClickListener() {
@@ -159,6 +161,7 @@ public class OfflineFragment extends android.app.Fragment {
 
         AlertDialog.Builder alertBuilder = new AlertDialog.Builder(getActivity());
         alertBuilder.setView(view);
+        alertBuilder.setTitle("Password:");
         final EditText userInput = (EditText) view.findViewById(R.id.userinput);
         alertBuilder.setCancelable(true).setPositiveButton("Ok", new DialogInterface.OnClickListener() {
 
@@ -193,7 +196,7 @@ public class OfflineFragment extends android.app.Fragment {
 
         // TODO Auto-generated method stub
         if(resultCode == Activity.RESULT_CANCELED){
-            Toast.makeText(ctx, "Encryption canceled.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getActivity(), "Canceled", Toast.LENGTH_SHORT).show();
         }
         else if (resultCode == RESULT_CHALLENGE){ // Result from challenge: 64
             keyHMAC = data.getByteArrayExtra("response");
