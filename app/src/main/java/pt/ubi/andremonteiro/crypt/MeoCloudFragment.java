@@ -1,5 +1,6 @@
 package pt.ubi.andremonteiro.crypt;
 
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.ProgressDialog;
@@ -44,6 +45,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -136,6 +138,11 @@ public class MeoCloudFragment extends Fragment {
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                if (accessToken.getExpirationDate().getTime().before(Util.getCurrentDate()))
+                {
+                    Toast.makeText(ctx, "Session expired. Please login again.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
                 uploading = true;
                 Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
                 intent.setType("*/*");
@@ -171,7 +178,6 @@ public class MeoCloudFragment extends Fragment {
                             try {
                                 InputStream inputStream = response.body().byteStream();
                                 fileArray = IOUtils.toByteArray(inputStream);
-                                System.out.println("file: \n"+Util.byteArrayToString(fileArray));
                                 saltHMAC = CryptSuite.getSaltFromFile(fileArray);
                                 getYubikeyInfo();
                             } catch (Exception e) {
@@ -193,9 +199,26 @@ public class MeoCloudFragment extends Fragment {
         return view;
     }
 
+    private void refreshView(){
+        if (accessToken!=null){
+            Gson gson = new Gson();
+            String json = mPrefs.getString(mAccessToken, null);
+            accessToken = gson.fromJson(json, AccessToken.class);
+            TextView text = (TextView)view.findViewById(R.id.textExpirationDate);
+            text.setText("Expires " +accessToken.getExpirationDate().getTime().toString());
+            if (accessToken.getExpirationDate().getTime().after(Util.getCurrentDate()))
+            {
+                Button loginButton = (Button) view.findViewById(R.id.meoLoginButton);
+                loginButton.setText(mRefresh);
+            }
+        }
+    }
+
     @Override
     public void onResume() {
         super.onResume();
+
+        refreshView();
 
         // the intent filter defined in AndroidManifest will handle the return from ACTION_VIEW intent
         Uri uri = getActivity().getIntent().getData();
@@ -232,11 +255,12 @@ public class MeoCloudFragment extends Fragment {
                             String json = gson.toJson(accessToken);
                             prefsEditor.putString(mAccessToken, json);
                             prefsEditor.apply();
+                            prefsEditor.commit();
                         }
                     }
                 }.execute();
             } else if (uri.getQueryParameter("error") != null) {
-                Toast.makeText(getActivity(), "Error on retrieving authorization code.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getActivity(), "Error retrieving authorization code.", Toast.LENGTH_SHORT).show();
             }
         }
         if (!(downloading || uploading)) populateListView();
@@ -259,9 +283,13 @@ public class MeoCloudFragment extends Fragment {
                         Call<ArrayList<YubicryptFile>> filescall = getFilesService.getFiles();
                         try {
                             list = filescall.execute().body();
-                        } catch (IOException e) {
+                        }catch (SocketTimeoutException e){
+                            Toast.makeText(ctx, "Connection to the server timed out. Try again later.", Toast.LENGTH_LONG).show();
+                        }
+                        catch (IOException e) {
                             e.printStackTrace();
                         }
+
                         return null;
                     }
 
@@ -269,7 +297,7 @@ public class MeoCloudFragment extends Fragment {
                     protected void onPostExecute(Object o) {
                         super.onPostExecute(o);
                         if (list != null){
-                            FileListAdapter adapter = new FileListAdapter(getActivity(), 0, list);
+                            FileListAdapter adapter = new FileListAdapter(ctx, 0, list);
                             fileList.setAdapter(adapter);
                         }
                         dialog.dismiss();
@@ -285,8 +313,11 @@ public class MeoCloudFragment extends Fragment {
         }
     }
 
+    Activity activity;
+
     @Override
-    public void onAttach(Context context) { super.onAttach(context); }
+    public void onAttach(Activity activity) { super.onAttach(activity);
+    this.activity = activity;}
 
     @Override
     public void onDetach() {
@@ -301,6 +332,7 @@ public class MeoCloudFragment extends Fragment {
     private void getYubikeyInfo(){
         View view = LayoutInflater.from(ctx).inflate(R.layout.password_dialog, null);
         android.app.AlertDialog.Builder alertBuilder = new android.app.AlertDialog.Builder(ctx);
+        alertBuilder.setTitle("Password:");
         alertBuilder.setView(view);
         final EditText userInput = (EditText) view.findViewById(R.id.userinput);
         alertBuilder.setCancelable(true).setPositiveButton("Ok", new DialogInterface.OnClickListener() {
@@ -318,7 +350,11 @@ public class MeoCloudFragment extends Fragment {
     private void challengeMethod(byte[] saltHMAC, int challenge_mode){
         Intent intent = new Intent(ctx,Challenge.class);
         intent.putExtra("challenge", saltHMAC);
-        startActivityForResult(intent, challenge_mode);
+        try{
+            startActivityForResult(intent, challenge_mode);
+        }catch(IllegalStateException e){
+            activity.finish(); // Fragment not attached.
+        }
     }
 
     @Override
@@ -337,6 +373,7 @@ public class MeoCloudFragment extends Fragment {
             }
             if (requestCode == CALL_ENCRYPTION){
                 filename=Util.getFileNameFromPath(data.getData().getPath());
+                System.out.println("Filename "+filename);
                 saltHMAC = Util.genRandomBytes();
                 getYubikeyInfo();
             }
@@ -409,20 +446,21 @@ public class MeoCloudFragment extends Fragment {
                         UploadFileService uploadService = YubicryptClient.createUploadService(UploadFileService.class, accessToken);
 
                         okhttp3.RequestBody requestFile = okhttp3.RequestBody.create(okhttp3.MediaType.parse("multipart/form-data"),outputStream.toByteArray());
-                        MultipartBody.Part body = MultipartBody.Part.createFormData(filename,"file",requestFile);
+                        MultipartBody.Part body = MultipartBody.Part.createFormData("file",filename+".ybc",requestFile);
 
                         Call<Void> call = uploadService.uploadFile(body);
                         call.enqueue(new Callback<Void>() {
                             @Override
                             public void onResponse(Call<Void> call, retrofit2.Response<Void> response) {
-                                Log.v("Upload", "success");
+                                Toast.makeText(ctx, "Upload successful. ", Toast.LENGTH_SHORT).show();
                             }
 
                             @Override
                             public void onFailure(Call<Void> call, Throwable t) {
-                                Log.e("Upload error:", t.getMessage());
+                                Toast.makeText(ctx, "Error on upload: "+t.getMessage(), Toast.LENGTH_LONG).show();
                             }
                         });
+                        uploading = false;
                     }
                 }.execute();
             }

@@ -40,4 +40,5 @@ public class FileListAdapter extends ArrayAdapter<YubicryptFile>{
         // Return the completed view to render on screen
         return convertView;
     }
+
 }

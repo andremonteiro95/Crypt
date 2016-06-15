@@ -109,7 +109,7 @@ public class Util {
 
     public static Date getCurrentDate(){
         Calendar calendar = new GregorianCalendar(TimeZone.getTimeZone("Europe/London"));
-        calendar.add(Calendar.MILLISECOND,TimeZone.getTimeZone("Europe/London").getDSTSavings());
+        //calendar.add(Calendar.MILLISECOND,TimeZone.getTimeZone("Europe/London").getDSTSavings());
         return calendar.getTime();
     }
 
