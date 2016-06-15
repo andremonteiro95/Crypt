@@ -256,6 +256,7 @@ public class MeoCloudFragment extends Fragment {
                             prefsEditor.putString(mAccessToken, json);
                             prefsEditor.apply();
                             prefsEditor.commit();
+
                         }
                     }
                 }.execute();

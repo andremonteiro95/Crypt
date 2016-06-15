@@ -12,11 +12,11 @@
             android:title="@string/offline" />
         <item
             android:id="@+id/nav_dropbox"
-            android:icon="@drawable/ic_file_cloud_queue"
+            android:icon="@drawable/ic_menu_dropbox"
             android:title="@string/dropbox" />
         <item
             android:id="@+id/nav_meocloud"
-            android:icon="@drawable/ic_file_cloud_queue"
+            android:icon="@drawable/ic_menu_meo"
             android:title="@string/meocloud" />
     </group>
 
