@@ -14,6 +14,10 @@
             android:id="@+id/nav_dropbox"
             android:icon="@drawable/ic_file_cloud_queue"
             android:title="@string/dropbox" />
+        <item
+            android:id="@+id/nav_meocloud"
+            android:icon="@drawable/ic_file_cloud_queue"
+            android:title="@string/meocloud" />
     </group>
 
 </menu>

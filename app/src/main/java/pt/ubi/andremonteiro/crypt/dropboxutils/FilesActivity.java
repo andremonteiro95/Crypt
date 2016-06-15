@@ -142,7 +142,7 @@ public class FilesActivity extends DropboxActivity {
                     dialog.setMessage("Decrypting");
                     dialog.show();
                     File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-                    file = new File(path, "things.jpg");
+                    file = new File(path, Util.removeYubicryptExtension(filename));
                     FileOutputStream fos = new FileOutputStream(file);
                     new DecryptTask(resultArray, fos, password, keyHMAC, tokenSerial){
                         @Override
@@ -165,8 +165,8 @@ public class FilesActivity extends DropboxActivity {
                                 case 4:
                                     Toast.makeText(ctx, "File corrupted. Invalid HMAC.", Toast.LENGTH_LONG).show();
                                     break;
+                                default: viewFileInExternalApp(file);
                             }
-                            viewFileInExternalApp(file);
                         }
                     }.execute();
 
@@ -265,6 +265,7 @@ public class FilesActivity extends DropboxActivity {
 
     File resultDownload;
     byte[] resultArray=null;
+    String filename = null;
 
     private void downloadFile(FileMetadata file) {
         final ProgressDialog dialog = new ProgressDialog(this);
@@ -280,7 +281,7 @@ public class FilesActivity extends DropboxActivity {
 
                 if (result != null) {
                     resultDownload = result;
-
+                    filename = result.getName();
                     try {
                         resultArray = IOUtils.toByteArray(new FileInputStream(resultDownload));
                         saltHMAC = CryptSuite.getSaltFromFile(resultArray);

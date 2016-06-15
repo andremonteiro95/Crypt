@@ -22,6 +22,7 @@ android {
 dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
     testCompile 'junit:junit:4.12'
+    compile files('src/core-1.54.0.0.jar')
     compile 'com.android.support:appcompat-v7:23.3.0'
     compile 'com.android.support:design:23.3.0'
     compile 'com.android.support:support-v4:23.3.0'
@@ -30,7 +31,11 @@ dependencies {
     compile 'com.dropbox.core:dropbox-core-sdk:2.0.2'
     compile 'com.fasterxml.jackson.core:jackson-core:2.5.4'
     compile 'com.fasterxml.jackson.core:jackson-annotations:2.5.4'
+    compile 'com.squareup.okhttp3:okhttp:3.3.1'
+    compile 'com.squareup.retrofit2:retrofit:2.0.2'
+    compile 'com.squareup.okhttp3:okhttp:3.3.1'
+    compile 'com.squareup.retrofit2:converter-gson:2.0.2'
     compile 'com.squareup.picasso:picasso:2.5.2'
-    compile 'com.squareup.okhttp:okhttp:2.4.0'
-    compile files('src/core-1.54.0.0.jar')
+    compile 'com.squareup.okhttp:okhttp:2.7.5'
+    compile 'com.squareup.moshi:moshi:1.2.0'
 }

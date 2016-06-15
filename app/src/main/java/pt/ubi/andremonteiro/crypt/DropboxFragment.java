@@ -28,7 +28,6 @@ public class DropboxFragment extends android.app.Fragment {
 
     Context context;
 
-
     private OnFragmentInteractionListener mListener;
 
     public DropboxFragment() {

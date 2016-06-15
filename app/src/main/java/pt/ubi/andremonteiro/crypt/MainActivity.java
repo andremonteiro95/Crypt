@@ -1,8 +1,10 @@
 package pt.ubi.andremonteiro.crypt;
 
 import android.app.FragmentManager;
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.StrictMode;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.app.Fragment;
@@ -39,6 +41,8 @@ public class MainActivity extends AppCompatActivity
             }
         });
 
+
+
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
                 this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
@@ -53,6 +57,9 @@ public class MainActivity extends AppCompatActivity
         fragmentManager.beginTransaction()
                 .replace(R.id.mainRelLayout, fragment)
                 .commit();
+
+        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+        StrictMode.setThreadPolicy(policy);
     }
 
     @Override
@@ -66,6 +73,21 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
+    protected void onResume(){
+        super.onResume();
+        Intent x = getIntent();
+        if (x.getData() != null && x.getData().toString().contains("callback.com"))
+        {
+            Fragment fragment = new MeoCloudFragment();
+            FragmentManager fragmentManager = getFragmentManager();
+            fragmentManager.beginTransaction()
+                    .replace(R.id.mainRelLayout, fragment)
+                    .commit();
+            setTitle("Meo Cloud");
+        }
+    }
+
+    @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.main, menu);
@@ -74,16 +96,8 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
 
-        //noinspection SimplifiableIfStatement
-        // TO USE : UNCOMMENT menu -> main.xml
-        /*if (id == R.id.action_settings) {
-            return true;
-        }*/
+        int id = item.getItemId();
 
         return super.onOptionsItemSelected(item);
     }
@@ -123,6 +137,15 @@ public class MainActivity extends AppCompatActivity
                     .replace(R.id.mainRelLayout, fragment)
                     .commit();
             setTitle("Dropbox");
+        }
+
+        if (id == R.id.nav_meocloud) {
+            Fragment fragment = new MeoCloudFragment();
+            FragmentManager fragmentManager = getFragmentManager();
+            fragmentManager.beginTransaction()
+                    .replace(R.id.mainRelLayout, fragment)
+                    .commit();
+            setTitle("Meo Cloud");
         }
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
