@@ -240,6 +240,7 @@ public class MeoCloudFragment extends Fragment {
             }
         }
         if (!(downloading || uploading)) populateListView();
+        ctx = getActivity();
     }
 
     public void populateListView(){
@@ -409,7 +410,7 @@ public class MeoCloudFragment extends Fragment {
                         UploadFileService uploadService = YubicryptClient.createUploadService(UploadFileService.class, accessToken);
 
                         okhttp3.RequestBody requestFile = okhttp3.RequestBody.create(okhttp3.MediaType.parse("multipart/form-data"),outputStream.toByteArray());
-                        MultipartBody.Part body = MultipartBody.Part.createFormData(filename,"file",requestFile);
+                        MultipartBody.Part body = MultipartBody.Part.createFormData("test.txt","file",requestFile);
 
                         Call<Void> call = uploadService.uploadFile(body);
                         call.enqueue(new Callback<Void>() {
